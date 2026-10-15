@@ -821,16 +821,16 @@ fn zhipu_provider() -> Provider {
     provider_from_yaml(
         r#"
 id: zhipu
-display_name: { zh: "智谱", en: "Zhipu GLM", ja: "Zhipu GLM（日）" }
-description: { zh: "智谱 AI", en: "Zhipu AI", ja: "Zhipu AI" }
+display_name: { zh: "智谱", zh-Hant: "智譜", en: "Zhipu GLM", ja: "Zhipu GLM（日）" }
+description: { zh: "智谱 AI", zh-Hant: "智譜 AI", en: "Zhipu AI", ja: "Zhipu AI" }
 compatibility: verified
 endpoints:
   - id: default
-    label: { zh: "默认", en: "Default", ja: "デフォルト" }
+    label: { zh: "默认", zh-Hant: "預設", en: "Default", ja: "デフォルト" }
     base_url: "https://open.bigmodel.cn/api/anthropic"
     messages_path: "/v1/messages"
   - id: intl
-    label: { zh: "国际版", en: "International", ja: "国際版" }
+    label: { zh: "国际版", zh-Hant: "國際版", en: "International", ja: "国際版" }
     base_url: "https://intl.bigmodel.cn/api/anthropic"
     messages_path: "/v1/messages"
 default_endpoint: intl
