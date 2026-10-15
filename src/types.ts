@@ -167,9 +167,9 @@ export interface ProviderInfo {
   };
   /**
    * 顶层的 display_name / description / compatibility_notes / endpoints[].label / .description 是中文,
-   * 英日文在这里 (后端保证三语齐全)。界面里不要直接读, 走 useProviders() —— 它已经按界面语言换好了。
+   * 繁中 / 英 / 日文在这里 (后端保证四语齐全)。界面里不要直接读, 走 useProviders() —— 它已经按界面语言换好了。
    */
-  translations: Record<"en" | "ja", ProviderText>;
+  translations: Record<"zh-Hant" | "en" | "ja", ProviderText>;
   url_params: UrlParamInfo[];
 }
 
@@ -183,8 +183,8 @@ export interface ProviderText {
   url_params: Record<string, { label: string; placeholder?: string }>;
 }
 
-/** 后端 provider::model::LocalizedText: 三语各一份。 */
-export type LocalizedText = Record<"zh" | "en" | "ja", string>;
+/** 后端 provider::model::LocalizedText: 四语各一份。 */
+export type LocalizedText = Record<"zh" | "zh-Hant" | "en" | "ja", string>;
 
 export interface ModelSlots {
   fable: string;
@@ -548,8 +548,8 @@ export interface Settings {
   cors_enabled: boolean;
   /** Access-Control-Allow-Origin 值,默认 "*" */
   cors_allow_origin: string;
-  /** 前端 UI 语言偏好: "system" 跟随系统 / "zh" / "en" / "ja"。默认 system */
-  preferred_language: "system" | "zh" | "en" | "ja";
+  /** 前端 UI 语言偏好: "system" 跟随系统 / "zh" / "zh-Hant" / "en" / "ja"。默认 system */
+  preferred_language: "system" | "zh" | "zh-Hant" | "en" | "ja";
   /**
    * 更新源选择: null=未设置(走 tauri.conf.json 默认 GitHub),
    * "international"=国际(GitHub) / "china"=中国大陆(阿里云 OSS)。
@@ -591,7 +591,7 @@ export interface SettingsPatch {
   auth_enabled?: boolean;
   cors_enabled?: boolean;
   cors_allow_origin?: string;
-  preferred_language?: "system" | "zh" | "en" | "ja";
+  preferred_language?: "system" | "zh" | "zh-Hant" | "en" | "ja";
   update_source?: UpdateSource;
   debug_mode?: boolean;
   max_request_body_mb?: number;

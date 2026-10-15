@@ -40,7 +40,8 @@ export function GeneralTab({ form }: { form: SettingsForm }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="system">{t("settings.language.system")}</SelectItem>
-                <SelectItem value="zh">中文</SelectItem>
+                <SelectItem value="zh">简体中文</SelectItem>
+                <SelectItem value="zh-Hant">繁體中文</SelectItem>
                 <SelectItem value="en">English</SelectItem>
                 <SelectItem value="ja">日本語</SelectItem>
               </SelectContent>

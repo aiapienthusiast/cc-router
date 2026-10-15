@@ -253,34 +253,61 @@
    * 靠浏览器的逐字符 fallback 自动分工 —— 汉字在前段字体里没有字形,
    * 会自动落到后段的中文字体, 因此中西文能各用各的最优字形。
    * 打头的四款拉丁 webfont (与官网一致) 由 src/fonts.ts 随包打入, 只含 latin 子集;
-   * 汉字全部走系统字体, 不打包 CJK webfont (体积太大)。 */
+   * 汉字全部走系统字体, 不打包 CJK webfont (体积太大)。中日文回退抽成 --cjk-*,
+   * 由下方 :root:lang(zh-TW) / :root:lang(ja) 按 <html lang> 换成繁中 / 日文字体, 默认是简中字体。 */
+  --cjk-sans:
+    "PingFang SC", "Hiragino Sans GB",                /* macOS */
+    "Microsoft YaHei UI", "Microsoft YaHei",          /* Windows */
+    "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei"; /* Linux */
+  --cjk-serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun";
+  --cjk-hand: "Kaiti SC", "STKaiti", "KaiTi", "AR PL UKai CN";
+  --cjk-mono: "Source Han Mono SC";
   --font-sans:
     /* 拉丁 / 数字 / UI 主字形 */
     "Instrument Sans",
     -apple-system, BlinkMacSystemFont,                /* macOS: SF Pro */
     "Segoe UI Variable Text", "Segoe UI",             /* Win11 小字号光学优化版 → Win10 回退 */
     Inter, Roboto, "Helvetica Neue", Arial,           /* Linux 常见 / 通用兜底 */
-    /* 中文回退 */
-    "PingFang SC", "Hiragino Sans GB",                /* macOS */
-    "Microsoft YaHei UI", "Microsoft YaHei",          /* Windows */
-    "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", /* Linux */
+    var(--cjk-sans),
     system-ui, sans-serif;
   --font-mono:
     "JetBrains Mono",
     ui-monospace, SFMono-Regular, "SF Mono", Menlo,   /* macOS */
     "Cascadia Mono", "Cascadia Code", Consolas,       /* Win11 → Win10 */
     "DejaVu Sans Mono", "Liberation Mono",            /* Linux */
-    "Source Han Mono SC", monospace;
-  /* 页面标题: 衬线; 汉字落到系统宋体 */
+    var(--cjk-mono), monospace;
+  /* 页面标题: 衬线; 汉字落到系统宋体 / 明体 */
   --font-display:
     Newsreader, Georgia,
-    "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun",
+    var(--cjk-serif),
     serif;
   /* 手写批注: 拉丁用 Caveat, 汉字落到系统楷体 (官网用的龙藏体不打包) */
   --font-hand:
     Caveat,
-    "Kaiti SC", "STKaiti", "KaiTi", "AR PL UKai CN",
+    var(--cjk-hand),
     cursive;
+}
+
+/* 繁中: 台湾字形规范 (标点居中、部分笔形不同), 不能落到 SC 字体上 */
+:root:lang(zh-TW) {
+  --cjk-sans:
+    "PingFang TC",
+    "Microsoft JhengHei UI", "Microsoft JhengHei",
+    "Noto Sans CJK TC", "Source Han Sans TC", "WenQuanYi Micro Hei";
+  --cjk-serif: "Songti TC", "Noto Serif CJK TC", "Source Han Serif TC", "PMingLiU";
+  --cjk-hand: "Kaiti TC", "DFKai-SB", "BiauKai", "AR PL UKai TW";
+  --cjk-mono: "Source Han Mono TC";
+}
+
+/* 日文: 汉字按日本字形; 楷体没有日文对应, 手写体落到教科书体 */
+:root:lang(ja) {
+  --cjk-sans:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic UI", "Meiryo UI", "Meiryo",
+    "Noto Sans CJK JP", "Source Han Sans JP";
+  --cjk-serif: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", "Source Han Serif JP";
+  --cjk-hand: "Klee", "UD Digi Kyokasho N-R", "Kaiti SC", "KaiTi";
+  --cjk-mono: "Source Han Mono";
 }
 
 /* ============================================================

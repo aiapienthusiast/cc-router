@@ -32,15 +32,13 @@
     -apple-system, BlinkMacSystemFont,
     "Segoe UI Variable Text", "Segoe UI",
     Inter, Roboto, "Helvetica Neue", Arial,
-    "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei UI", "Microsoft YaHei",
-    "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
+    var(--cjk-sans),
     system-ui, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     "Cascadia Mono", "Cascadia Code", Consolas,
     "DejaVu Sans Mono", "Liberation Mono",
-    "Source Han Mono SC", monospace;
+    var(--cjk-mono), monospace;
   --font-display: var(--font-sans);
   --font-hand:    var(--font-sans);
 }

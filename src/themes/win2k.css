@@ -219,14 +219,12 @@
   /* 拉丁用 Tahoma; 汉字按用户选择走系统 UI 字体 (与经典主题同一段中文回退) */
   --font-sans:
     Tahoma, Verdana, "Segoe UI",
-    "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei UI", "Microsoft YaHei",
-    "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei",
+    var(--cjk-sans),
     system-ui, sans-serif;
   --font-mono:
     "Lucida Console", "Courier New",
     ui-monospace, Consolas, "DejaVu Sans Mono", "Liberation Mono",
-    "Source Han Mono SC", monospace;
+    var(--cjk-mono), monospace;
 }
 
 @layer utilities {
