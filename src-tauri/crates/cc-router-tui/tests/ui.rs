@@ -18,7 +18,7 @@ use cc_router_tui::client::dto::{
 };
 use cc_router_tui::client::events::{ROUTE_ATTEMPT_FINISHED, ROUTE_ATTEMPT_STARTED};
 use cc_router_tui::format::{fit, Tz};
-use cc_router_tui::i18n::{strings, Lang, Strings, EN, JA, ZH};
+use cc_router_tui::i18n::{strings, Lang, Strings, EN, JA, ZH, ZH_HANT};
 use cc_router_tui::pages::Pages;
 use cc_router_tui::secret::Secret;
 use cc_router_tui::theme::{ColorMode, Theme};
@@ -6478,6 +6478,78 @@ fn ja_virtual_models_80x24() {
     }
     let out = render(&mut a, 80, 24);
     assert!(out.contains(JA.vm_will_skip), "「スキップ対象」应该完整显示\n{out}");
+    insta::assert_snapshot!(out);
+}
+
+// ---------- 繁中界面 ----------
+
+#[test]
+fn zh_hant_overview_80x24() {
+    use_lang(Lang::ZhHant);
+    insta::assert_snapshot!(render(&mut loaded(false), 80, 24));
+}
+
+#[test]
+fn zh_hant_subscriptions_120x40() {
+    use_lang(Lang::ZhHant);
+    insta::assert_snapshot!(render(&mut subs_app(false), 120, 40));
+}
+
+#[test]
+fn zh_hant_wizard_custom_80x24() {
+    use_lang(Lang::ZhHant);
+    insta::assert_snapshot!(render(&mut custom_wizard_probed_and_filled(), 80, 24));
+}
+
+#[test]
+fn zh_hant_delete_confirm_80x24() {
+    use_lang(Lang::ZhHant);
+    let mut a = subs_app(false);
+    render(&mut a, 80, 24);
+    let action = a.handle_key(key(KeyCode::Char('d'))).expect("应该产出确认弹窗");
+    a.update(action);
+    insta::assert_snapshot!(render(&mut a, 80, 24));
+}
+
+#[test]
+fn zh_hant_help_subscriptions_80x24() {
+    use_lang(Lang::ZhHant);
+    let mut a = subs_app(false);
+    a.update(Action::ToggleHelp);
+    insta::assert_snapshot!(render(&mut a, 80, 24));
+}
+
+#[test]
+fn zh_hant_logs_120x40() {
+    use_lang(Lang::ZhHant);
+    let mut a = logs_app(false);
+    a.update(requests_done(1, RequestQuery::default(), logs_fixture_rows(), 4));
+    insta::assert_snapshot!(render(&mut a, 120, 40));
+}
+
+#[test]
+fn zh_hant_live_80x24() {
+    use_lang(Lang::ZhHant);
+    insta::assert_snapshot!(render(&mut live_fixture_app(false), 80, 24));
+}
+
+#[test]
+fn zh_hant_wizard_slots_80x24() {
+    use_lang(Lang::ZhHant);
+    let mut a = wizard_at_slots(vec![ModelInfo { id: "glm-4.6".into(), display_name: None }]);
+    insta::assert_snapshot!(render(&mut a, 80, 24));
+}
+
+/// 繁中虚拟模型页, 选中 `model-fallback` (同日文那张): 「將略過」类提示与右栏底部摘要完整显示。
+#[test]
+fn zh_hant_virtual_models_80x24() {
+    use_lang(Lang::ZhHant);
+    let mut a = vm_app(false);
+    for _ in 0..4 {
+        a.handle_key(key(KeyCode::Down));
+    }
+    let out = render(&mut a, 80, 24);
+    assert!(out.contains(ZH_HANT.vm_will_skip), "「{}」应该完整显示\n{out}", ZH_HANT.vm_will_skip);
     insta::assert_snapshot!(out);
 }
 
