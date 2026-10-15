@@ -8,6 +8,7 @@ use crate::client::dto::{QuotaPeriod, RoutingMode, SubscriptionState};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang {
     Zh,
+    ZhHant,
     En,
     Ja,
 }
@@ -15,7 +16,7 @@ pub enum Lang {
 /// 变体个数。穷尽 `match`: 加一种语言时这里先编译失败, 改的人就在列全变体的这一行旁边改数字,
 /// 数字一变下面的长度断言就逼着 [`Lang::ALL`] 一起补上。
 const LANG_COUNT: usize = match Lang::Zh {
-    Lang::Zh | Lang::En | Lang::Ja => 3,
+    Lang::Zh | Lang::ZhHant | Lang::En | Lang::Ja => 4,
 };
 
 // 长度等于变体个数且元素两两不同, 合起来就是「每种语言恰好一次」。长度单独断言而不只靠
@@ -34,18 +35,17 @@ const _: () = {
 };
 
 impl Lang {
-    /// 全部语言, 三语守卫与快照测试都遍历它而不是各自手写一份。
-    pub const ALL: [Lang; 3] = [Lang::Zh, Lang::En, Lang::Ja];
+    /// 全部语言, 多语守卫与快照测试都遍历它而不是各自手写一份。
+    pub const ALL: [Lang; 4] = [Lang::Zh, Lang::ZhHant, Lang::En, Lang::Ja];
 
-    /// `preferred` 来自桌面端设置 (`"system"` / `"zh"` / `"en"` / `"ja"`)。
+    /// `preferred` 来自桌面端设置 (`"system"` / `"zh"` / `"zh-Hant"` / `"en"` / `"ja"`)。
     /// `system_tag` 是 runtime.json 里桌面端下发的原始系统语言标签 (`tauri_plugin_os::locale()`
     /// 的原样值), 只有连上桌面端才拿得到。
     ///
-    /// 解析顺序: 显式 `zh`/`en`/`ja` 优先命中即返回; `"system"` / 空串 / **任何未知值**都跟随系统——
+    /// 解析顺序: 显式 `zh`/`zh-Hant`/`en`/`ja` 优先命中即返回; `"system"` / 空串 / **任何未知值**都跟随系统——
     /// 与 `tray.rs::TrayLocale::resolve` 一致, 未知偏好不是 en, 而是像 `"system"` 一样继续探测。
     /// 系统探测顺序: `system_tag` (非空) → 环境变量 `LC_ALL` → `LC_MESSAGES` → `LANG` → en。
-    /// 映射规则 (大小写不敏感) 与桌面端 `src/i18n/index.tsx::detectSystemLocale` / `tray.rs` 一致:
-    /// `zh*` → zh, `ja*` → ja, 其余 → en。
+    /// 标签到语言的映射见 [`Lang::from_tag`]。
     ///
     /// 连接之前 `preferred` 取 runtime.json 里的 `preferred_language`, 那是桌面端**启动时**写下的值,
     /// 运行期间改语言不会重写那个文件——所以 app 运行中改过语言的话, 连接前的提示 (「未启用」等)
@@ -54,6 +54,7 @@ impl Lang {
     pub fn resolve(preferred: &str, system_tag: Option<&str>, env: impl Fn(&str) -> Option<String>) -> Self {
         let tag = match preferred {
             "zh" => return Self::Zh,
+            "zh-Hant" => return Self::ZhHant,
             "en" => return Self::En,
             "ja" => return Self::Ja,
             // "system"、空串、以及任何未知值都走系统探测。
@@ -64,13 +65,31 @@ impl Lang {
                     .unwrap_or_default()
             }),
         };
-        let lower = tag.to_ascii_lowercase();
-        if lower.starts_with("zh") {
-            Self::Zh
-        } else if lower.starts_with("ja") {
-            Self::Ja
-        } else {
-            Self::En
+        Self::from_tag(&tag)
+    }
+
+    /// 系统语言标签 → 语言。与桌面端 `src/i18n/localeTag.ts::localeFromTag`、托盘
+    /// `tray/strings.rs::TrayLocale::from_tag` 是同一条规则, 由仓库根 `src/i18n/locale-cases.json`
+    /// 锁住 —— 改规则先改用例表。小写、`_`→`-`、截掉 `.编码` / `@修饰` 后按子标签判定;
+    /// 书写系统 (hant / hans) 优先于地区。`LANG=zh_TW.UTF-8` 就是靠前两步才认得出来。
+    pub fn from_tag(tag: &str) -> Self {
+        let lower = tag.trim().to_ascii_lowercase().replace('_', "-");
+        let norm = lower.split(['.', '@']).next().unwrap_or("");
+        let parts: Vec<&str> = norm.split('-').filter(|p| !p.is_empty()).collect();
+        match parts.first().copied() {
+            Some("zh") => {
+                if parts.contains(&"hant") {
+                    Self::ZhHant
+                } else if parts.contains(&"hans") {
+                    Self::Zh
+                } else if parts.iter().any(|p| matches!(*p, "tw" | "hk" | "mo")) {
+                    Self::ZhHant
+                } else {
+                    Self::Zh
+                }
+            }
+            Some("ja") => Self::Ja,
+            _ => Self::En,
         }
     }
 }
@@ -1052,6 +1071,9 @@ cc-router-tui — cc-router 的终端界面
 /// 术语沿用桌面端 `src/i18n/locales/en.json` (Subscription / Virtual model / Provider / Endpoint /
 /// Reasoning effort / Fallback / Quota / Balance / Live routing / Request logs …)。英文普遍比中文宽,
 /// 定宽列都由布局按实际文字宽度推导, 这里不为了塞进中文的列宽去缩写。
+/// 繁体中文。Task 8 前暂用简中回退, 补齐后删掉 `..ZH` (见 i18n 测试 `zh_hant_is_fully_translated`)。
+pub const ZH_HANT: Strings = Strings { lang: Lang::ZhHant, ..ZH };
+
 pub const EN: Strings = Strings {
     lang: Lang::En,
     tabs: ["Overview", "Subscriptions", "Virtual models", "Live routing", "Logs"],
@@ -1923,6 +1945,7 @@ cc-router-tui — cc-router のターミナル UI
 pub fn strings(lang: Lang) -> &'static Strings {
     match lang {
         Lang::Zh => &ZH,
+        Lang::ZhHant => &ZH_HANT,
         Lang::En => &EN,
         Lang::Ja => &JA,
     }
@@ -1970,12 +1993,34 @@ mod tests {
         assert_eq!(Lang::resolve("fr", Some("zh-Hans-CN"), env(&[])), Lang::Zh);
     }
 
+    const LOCALE_CASES: &str = include_str!("../../../../src/i18n/locale-cases.json");
+
+    /// 与桌面端 `src/i18n/localeTag.ts::localeFromTag`、托盘 `TrayLocale::from_tag` 的契约: 三处读同一张用例表。
     #[test]
-    fn mapping_matches_the_desktop_rule_case_insensitively() {
-        assert_eq!(Lang::resolve("system", Some("ZH-Hant"), env(&[])), Lang::Zh);
-        assert_eq!(Lang::resolve("system", Some("Ja"), env(&[])), Lang::Ja);
-        assert_eq!(Lang::resolve("system", Some("en-US"), env(&[])), Lang::En);
-        assert_eq!(Lang::resolve("system", Some("pt-BR"), env(&[])), Lang::En);
+    fn system_tags_follow_the_shared_rule() {
+        #[derive(serde::Deserialize)]
+        struct Case {
+            tag: String,
+            expect: String,
+        }
+        let cases: Vec<Case> = serde_json::from_str(LOCALE_CASES).expect("locale-cases.json 解析失败");
+        for c in cases {
+            let want = match c.expect.as_str() {
+                "zh" => Lang::Zh,
+                "zh-Hant" => Lang::ZhHant,
+                "en" => Lang::En,
+                "ja" => Lang::Ja,
+                other => panic!("用例表里有未知语言 {other}"),
+            };
+            assert_eq!(Lang::from_tag(&c.tag), want, "tag {:?}", c.tag);
+            assert_eq!(Lang::resolve("system", Some(&c.tag), env(&[])), want, "tag {:?}", c.tag);
+        }
+    }
+
+    #[test]
+    fn posix_lang_reaches_traditional_chinese() {
+        assert_eq!(Lang::resolve("system", None, env(&[("LANG", "zh_TW.UTF-8")])), Lang::ZhHant);
+        assert_eq!(Lang::resolve("zh-Hant", None, env(&[("LANG", "en_US.UTF-8")])), Lang::ZhHant);
     }
 
     /// 标签栏一行放得下: 每个标签渲染成 ` N 名称 `, 之间一个分隔符, 总宽 ≤ 76 (80 列减边框与内距)。

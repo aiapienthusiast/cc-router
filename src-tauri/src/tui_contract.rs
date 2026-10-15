@@ -118,6 +118,11 @@ fn runtime_file_preferred_language_reaches_the_tui() {
     let without_pref = RuntimeFile::new(Path::new("/data"), Some(23456), None, "s3cret", None);
     let read: discovery::RuntimeInfo = through_json(&without_pref);
     assert_eq!(read.preferred_language, None);
+
+    let zh_hant = RuntimeFile::new(Path::new("/data"), Some(23456), None, "s3cret", None)
+        .with_preferred_language(Some("zh-Hant".into()));
+    let read: discovery::RuntimeInfo = through_json(&zh_hant);
+    assert_eq!(read.preferred_language.as_deref(), Some("zh-Hant"));
 }
 
 #[test]
@@ -175,6 +180,7 @@ fn subscription_matches() {
     assert_eq!(view.provider_display_name, "智谱");
     assert_eq!(view.provider_name(Lang::En), "Zhipu GLM", "provider_names 被改名会静默落回中文快照");
     assert_eq!(view.provider_name(Lang::Ja), "Zhipu GLM（日）");
+    assert_eq!(view.provider_name(Lang::ZhHant), "智譜");
     // 注册表里查不到 (自定义订阅 / yaml 已删) 就用快照。
     let orphan: dto::Subscription = through_json(&SubscriptionDto::from_runtime(&rt, Vec::new(), &HashMap::new()));
     assert_eq!(orphan.provider_name(Lang::En), "智谱");

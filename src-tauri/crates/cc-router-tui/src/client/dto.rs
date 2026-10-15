@@ -585,10 +585,12 @@ impl RequestQuery {
     }
 }
 
-/// 后端 `provider::model::LocalizedText`: 三语各一份, 后端保证齐全。
+/// 后端 `provider::model::LocalizedText`: 四语各一份, 后端保证齐全。
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct LocalizedName {
     pub zh: String,
+    #[serde(rename = "zh-Hant")]
+    pub zh_hant: String,
     pub en: String,
     pub ja: String,
 }
@@ -597,6 +599,7 @@ impl LocalizedName {
     pub fn get(&self, lang: Lang) -> &str {
         match lang {
             Lang::Zh => &self.zh,
+            Lang::ZhHant => &self.zh_hant,
             Lang::En => &self.en,
             Lang::Ja => &self.ja,
         }
@@ -672,6 +675,8 @@ impl ProviderEndpoint {
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct ProviderTranslations {
+    #[serde(rename = "zh-Hant")]
+    pub zh_hant: ProviderText,
     pub en: ProviderText,
     pub ja: ProviderText,
 }
@@ -729,6 +734,7 @@ impl Provider {
     pub fn localized(mut self, lang: Lang) -> Self {
         let text = match lang {
             Lang::Zh => return self,
+            Lang::ZhHant => self.translations.zh_hant.clone(),
             Lang::En => self.translations.en.clone(),
             Lang::Ja => self.translations.ja.clone(),
         };
@@ -1072,7 +1078,7 @@ mod tests {
             default_endpoint: None,
             auth: ProviderAuth { auth_type: "api_key".into() },
             model_discovery: ModelDiscovery { enabled: true, example_models: vec![] },
-            translations: ProviderTranslations { en: text.clone(), ja: text },
+            translations: ProviderTranslations { zh_hant: text.clone(), en: text.clone(), ja: text },
             url_params: vec![],
         };
         assert_eq!(p.capabilities(), (true, true));

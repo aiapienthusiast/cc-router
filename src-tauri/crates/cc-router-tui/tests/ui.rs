@@ -398,7 +398,7 @@ fn zhipu_provider() -> Provider {
         auth: ProviderAuth { auth_type: "api_key".into() },
         model_discovery: ModelDiscovery { enabled: true, example_models: vec!["glm-4-plus".into(), "glm-4.5-flash".into()] },
         // 向导收到的是 runtime 已经按界面语言换好的列表 (`Provider::localized`), 这里的译文不会上屏。
-        translations: ProviderTranslations { en: provider_text("Zhipu AI"), ja: provider_text("Zhipu AI") },
+        translations: ProviderTranslations { zh_hant: provider_text("Zhipu AI"), en: provider_text("Zhipu AI"), ja: provider_text("Zhipu AI") },
         url_params: vec![],
     }
 }
@@ -417,7 +417,7 @@ fn chatgpt_provider() -> Provider {
         default_endpoint: None,
         auth: ProviderAuth { auth_type: "chatgpt_oauth".into() },
         model_discovery: ModelDiscovery { enabled: false, example_models: vec![] },
-        translations: ProviderTranslations { en: provider_text("ChatGPT"), ja: provider_text("ChatGPT") },
+        translations: ProviderTranslations { zh_hant: provider_text("ChatGPT"), en: provider_text("ChatGPT"), ja: provider_text("ChatGPT") },
         url_params: vec![],
     }
 }
@@ -655,7 +655,7 @@ fn cloudflare_provider() -> Provider {
         default_endpoint: Some("direct".into()),
         auth: ProviderAuth { auth_type: "openai_chat_completions_api_key".into() },
         model_discovery: ModelDiscovery { enabled: true, example_models: vec![] },
-        translations: ProviderTranslations { en: provider_text("Cloudflare"), ja: provider_text("Cloudflare") },
+        translations: ProviderTranslations { zh_hant: provider_text("Cloudflare"), en: provider_text("Cloudflare"), ja: provider_text("Cloudflare") },
         url_params: vec![
             UrlParam { id: "account_id".into(), label: "账户 ID".into(), placeholder: None, pattern: "^[0-9a-f]{32}$".into() },
             UrlParam { id: "gateway_id".into(), label: "网关 ID".into(), placeholder: None, pattern: "^[A-Za-z0-9_-]{1,64}$".into() },
