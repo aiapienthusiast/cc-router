@@ -124,7 +124,7 @@ impl BasicsForm {
             .is_some_and(|e| e.is_systemone())
     }
 
-    /// `Provider` 行 `⏎`: 条目是全部厂商 + 5 个自定义协议。OAuth 类厂商 (TUI 不做设备码流程)
+    /// `Provider` 行 `⏎`: 条目是全部厂商 + 6 个自定义协议。OAuth 类厂商 (TUI 不做设备码流程)
     /// 的 label 后面追加提示语, picker 本身没有「置灰不可选」的能力, 选中时用「可选但选了只给
     /// 提示」等效 (见 `Wizard::apply_provider_choice`)。
     fn provider_picker(&self, providers: &[Provider], s: &'static Strings) -> Action {
@@ -142,7 +142,8 @@ impl BasicsForm {
             })
             .collect();
         for (protocol, label) in CustomProtocol::ALL.iter().zip(s.wiz_custom_labels.iter()) {
-            items.push(PickerItem { id: format!("custom:{}", protocol.as_wire()), label: format!("{label}{}", capability_suffix(true, false)), hint: None });
+            let jev = protocol.is_systemone();
+            items.push(PickerItem { id: format!("custom:{}", protocol.as_wire()), label: format!("{label}{}", capability_suffix(!jev, jev)), hint: None });
         }
         Action::OpenPicker(PickerSpec {
             tag: PickerTag::WizardProvider,

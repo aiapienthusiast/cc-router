@@ -47,6 +47,7 @@ fn expected_backend_protocol(p: dto::CustomProtocol) -> CustomProtocol {
         dto::CustomProtocol::OpenaiResponses => CustomProtocol::OpenaiResponses,
         dto::CustomProtocol::OpenaiChatCompletions => CustomProtocol::OpenaiChatCompletions,
         dto::CustomProtocol::GeminiInteractions => CustomProtocol::GeminiInteractions,
+        dto::CustomProtocol::Systemone => CustomProtocol::Systemone,
     }
 }
 

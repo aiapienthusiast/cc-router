@@ -781,15 +781,17 @@ pub enum CustomProtocol {
     OpenaiResponses,
     OpenaiChatCompletions,
     GeminiInteractions,
+    Systemone,
 }
 
 impl CustomProtocol {
-    pub const ALL: [CustomProtocol; 5] = [
+    pub const ALL: [CustomProtocol; 6] = [
         CustomProtocol::Anthropic,
         CustomProtocol::Gemini,
         CustomProtocol::OpenaiResponses,
         CustomProtocol::OpenaiChatCompletions,
         CustomProtocol::GeminiInteractions,
+        CustomProtocol::Systemone,
     ];
 
     /// 线上取值, 与后端 `#[serde(rename_all = "snake_case")]` 的输出逐字相同
@@ -801,6 +803,7 @@ impl CustomProtocol {
             CustomProtocol::OpenaiResponses => "openai_responses",
             CustomProtocol::OpenaiChatCompletions => "openai_chat_completions",
             CustomProtocol::GeminiInteractions => "gemini_interactions",
+            CustomProtocol::Systemone => "systemone",
         }
     }
 
@@ -840,18 +843,29 @@ impl CustomProtocol {
                 auth_header_name: "Authorization",
                 auth_header_format: AuthHeaderFormat::Bearer,
             },
+            CustomProtocol::Systemone => ProtocolPreset {
+                base_url: "https://api.typesafe.ai",
+                messages_path: "/v1/systemone",
+                auth_header_name: "Authorization",
+                auth_header_format: AuthHeaderFormat::Bearer,
+            },
         }
     }
 
-    /// 只有 Anthropic 允许用户自己挑鉴权头, 其余四种锁定成 `preset()` 里那一对。
+    /// Anthropic 与 System One 允许用户自己挑鉴权头, 其余四种锁定成 `preset()` 里那一对。
     pub fn auth_locked(self) -> bool {
-        !matches!(self, CustomProtocol::Anthropic)
+        !matches!(self, CustomProtocol::Anthropic | CustomProtocol::Systemone)
     }
 
     /// 只有 `Gemini` 要求 `messages_path` 含 `{model}`; `GeminiInteractions` 刻意不要求 (后端
     /// `commands/subscriptions.rs` 的校验也是这样分的)。
     pub fn requires_model_placeholder(self) -> bool {
         matches!(self, CustomProtocol::Gemini)
+    }
+
+    /// System One (Jev) subscription: only model-jev, a single Jev slot, no model probe.
+    pub fn is_systemone(self) -> bool {
+        matches!(self, CustomProtocol::Systemone)
     }
 }
 
@@ -1022,6 +1036,21 @@ mod tests {
         params.insert("account_id".to_string(), "abc".to_string());
         let with = CreateSource::Builtin { provider_id: "p".into(), endpoint_id: "e".into(), url_params: params }.to_args();
         assert_eq!(with["url_params"]["account_id"], "abc");
+    }
+
+    #[test]
+    fn systemone_custom_protocol_shape() {
+        let p = CustomProtocol::Systemone;
+        assert_eq!(p.as_wire(), "systemone");
+        assert!(p.is_systemone());
+        assert!(!p.auth_locked(), "System One 自定义沿用 Anthropic 的两个鉴权预设, 不锁定");
+        assert!(!p.requires_model_placeholder());
+        let preset = p.preset();
+        assert_eq!(preset.base_url, "https://api.typesafe.ai");
+        assert_eq!(preset.messages_path, "/v1/systemone");
+        assert_eq!(preset.auth_header_name, "Authorization");
+        assert_eq!(preset.auth_header_format, AuthHeaderFormat::Bearer);
+        assert_eq!(CustomProtocol::ALL.iter().filter(|p| p.is_systemone()).count(), 1);
     }
 
     #[test]
@@ -1278,7 +1307,8 @@ mod tests {
         assert_eq!(sorted.len(), wires.len(), "线上取值应该互不相同: {wires:?}");
 
         for p in CustomProtocol::ALL {
-            assert_eq!(p.auth_locked(), p != CustomProtocol::Anthropic, "{p:?}: 只有 Anthropic 允许自选鉴权头");
+            let picks_auth = matches!(p, CustomProtocol::Anthropic | CustomProtocol::Systemone);
+            assert_eq!(p.auth_locked(), !picks_auth, "{p:?}: 只有 Anthropic 与 System One 允许自选鉴权头");
             assert_eq!(p.requires_model_placeholder(), p == CustomProtocol::Gemini, "{p:?}: 只有 Gemini 要求 {{model}} 占位符");
 
             let preset = p.preset();

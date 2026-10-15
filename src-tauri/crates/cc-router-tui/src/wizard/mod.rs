@@ -946,7 +946,9 @@ mod tests {
         let labels: Vec<&str> = spec.items.iter().map(|i| i.label.as_str()).collect();
         let oauth_label = format!("kiro [LLM] · {}", s.wiz_desktop_only);
         assert_eq!(&labels[..4], ["llm [LLM]", "jev [Jev]", "both [LLM] [Jev]", oauth_label.as_str()]);
-        assert!(labels[4..].iter().all(|l| l.ends_with(" [LLM]")), "{labels:?}");
+        let (customs, systemone) = labels[4..].split_at(labels.len() - 5);
+        assert!(customs.iter().all(|l| l.ends_with(" [LLM]")), "{labels:?}");
+        assert!(systemone[0].ends_with(" [Jev]") && !systemone[0].contains("[LLM]"), "自定义 System One 只标 Jev: {labels:?}");
     }
 
     /// Jev 槽可以留空 (= 透传): 直接保存, 发全空槽。选择弹窗置顶「清空」项。

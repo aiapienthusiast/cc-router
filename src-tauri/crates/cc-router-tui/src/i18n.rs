@@ -441,7 +441,7 @@ pub struct Strings {
     pub wiz_desktop_only: &'static str,
     /// 5 个自定义协议条目的 label, 顺序与 `CustomProtocol::ALL` 一致——既用于厂商 picker 里的
     /// `custom:<protocol>` 条目, 也用于自定义表单自己的协议 picker (`wiz_pick_protocol`)。
-    pub wiz_custom_labels: [&'static str; 5],
+    pub wiz_custom_labels: [&'static str; 6],
     pub wiz_err_api_key: &'static str,
     pub wiz_err_display_name: &'static str,
     pub wiz_err_url_param_empty: &'static str,
@@ -471,6 +471,7 @@ pub struct Strings {
     pub wiz_btn_save: &'static str,
     /// 四个核心槽位任一为空时的校验错误 (兜底槽不参与)。
     pub wiz_err_slot: &'static str,
+    pub wiz_err_jev_model: &'static str,
     /// 订阅已经建好之后 `Esc` 的确认文案: 订阅已经建好了 (不是 `confirm_discard` 那种"放弃未保存
     /// 的编辑", 而是"这条订阅会带着 (pending) 槽位留在后端")。
     pub wiz_confirm_exit_pending: &'static str,
@@ -503,7 +504,7 @@ pub struct Strings {
     /// 自定义表单「协议」字段行自己的展示名 (顺序同 `CustomProtocol::ALL`)——**独立于**
     /// `wiz_custom_labels`(那份带 `自定义 · ` 前缀, 给厂商 picker 用), 不是从它派生出来的——
     /// 剥前缀在翻译或改文案后会静默失效, 两份译文各自独立维护。
-    pub wiz_protocol_names: [&'static str; 5],
+    pub wiz_protocol_names: [&'static str; 6],
 
     /// 向导表单底栏: `↑↓` 在字段间移动。
     pub key_field: &'static str,
@@ -963,6 +964,7 @@ pub const ZH: Strings = Strings {
         "自定义 · OpenAI Responses",
         "自定义 · OpenAI Chat Completions",
         "自定义 · Gemini Interactions",
+        "自定义 · System One",
     ],
     wiz_err_api_key: "API Key 不能为空",
     wiz_err_display_name: "备注名不能为空",
@@ -980,6 +982,7 @@ pub const ZH: Strings = Strings {
     wiz_pick_model: |slot| format!("为 {slot} 选择模型"),
     wiz_btn_save: "保存",
     wiz_err_slot: "请填写模型",
+    wiz_err_jev_model: "请填写 Jev 模型",
     wiz_confirm_exit_pending: "订阅已经创建, 但模型槽位还是 (pending)。退出向导? (稍后可以在订阅页设置)",
     wiz_saving: "正在保存…",
 
@@ -1000,7 +1003,7 @@ pub const ZH: Strings = Strings {
     wiz_err_messages_path: "请求路径必须以 / 开头",
     wiz_err_gemini_placeholder: "Gemini 的请求路径必须包含 {model}",
     wiz_probing: "正在获取模型列表…",
-    wiz_protocol_names: ["Anthropic 兼容", "Gemini", "OpenAI Responses", "OpenAI Chat Completions", "Gemini Interactions"],
+    wiz_protocol_names: ["Anthropic 兼容", "Gemini", "OpenAI Responses", "OpenAI Chat Completions", "Gemini Interactions", "System One"],
 
     key_field: "字段",
     key_pick: "选择",
@@ -1397,6 +1400,7 @@ pub const EN: Strings = Strings {
         "Custom · OpenAI Responses",
         "Custom · OpenAI Chat Completions",
         "Custom · Gemini Interactions",
+        "Custom · System One",
     ],
     wiz_err_api_key: "API key cannot be empty",
     wiz_err_display_name: "Note cannot be empty",
@@ -1414,6 +1418,7 @@ pub const EN: Strings = Strings {
     wiz_pick_model: |slot| format!("Model for {slot}"),
     wiz_btn_save: "Save",
     wiz_err_slot: "Enter a model",
+    wiz_err_jev_model: "Enter a Jev model",
     wiz_confirm_exit_pending: "Subscription created, but its model slots are still (pending).\nLeave the wizard? (You can set them later on the Subscriptions page)",
     wiz_saving: "Saving…",
 
@@ -1434,7 +1439,7 @@ pub const EN: Strings = Strings {
     wiz_err_messages_path: "Request path must start with /",
     wiz_err_gemini_placeholder: "Gemini request path must contain {model}",
     wiz_probing: "Fetching model list…",
-    wiz_protocol_names: ["Anthropic compatible", "Gemini", "OpenAI Responses", "OpenAI Chat Completions", "Gemini Interactions"],
+    wiz_protocol_names: ["Anthropic compatible", "Gemini", "OpenAI Responses", "OpenAI Chat Completions", "Gemini Interactions", "System One"],
 
     key_field: "Field",
     key_pick: "Select",
@@ -1828,6 +1833,7 @@ pub const JA: Strings = Strings {
         "カスタム · OpenAI Responses",
         "カスタム · OpenAI Chat Completions",
         "カスタム · Gemini Interactions",
+        "カスタム · System One",
     ],
     wiz_err_api_key: "API Key を入力してください",
     wiz_err_display_name: "備考名を入力してください",
@@ -1845,6 +1851,7 @@ pub const JA: Strings = Strings {
     wiz_pick_model: |slot| format!("{slot} のモデルを選択"),
     wiz_btn_save: "保存",
     wiz_err_slot: "モデルを入力してください",
+    wiz_err_jev_model: "Jev モデルを入力してください",
     wiz_confirm_exit_pending: "サブスクリプションは作成済みですが、モデルスロットはまだ (pending) です。\nウィザードを終了しますか? (あとでサブスクページで設定できます)",
     wiz_saving: "保存中…",
 
@@ -1865,7 +1872,7 @@ pub const JA: Strings = Strings {
     wiz_err_messages_path: "リクエストパスは / で始めてください",
     wiz_err_gemini_placeholder: "Gemini のリクエストパスには {model} が必要です",
     wiz_probing: "モデル一覧を取得中…",
-    wiz_protocol_names: ["Anthropic 互換", "Gemini", "OpenAI Responses", "OpenAI Chat Completions", "Gemini Interactions"],
+    wiz_protocol_names: ["Anthropic 互換", "Gemini", "OpenAI Responses", "OpenAI Chat Completions", "Gemini Interactions", "System One"],
 
     key_field: "項目",
     key_pick: "選択",
