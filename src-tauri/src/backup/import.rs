@@ -513,6 +513,29 @@ mod tests {
         assert!(preview.subscriptions[0].redacted_headers.is_empty(), "注册表能补回的头不再列为需要重填");
     }
 
+
+    #[test]
+    fn custom_systemone_subscription_round_trips_as_systemone() {
+        let mut row = SubscriptionRow::test_fixture("custom-systemone", "custom-systemone");
+        row.display_name = "LAN Ollama".into();
+        row.is_user_defined = true;
+        row.base_url = "http://192.168.1.20:11434".into();
+        row.messages_path = "/v1/systemone".into();
+        row.auth_header_name = "Authorization".into();
+        row.endpoint_protocol = crate::provider::model::EndpointProtocol::Systemone;
+        row.model_discovery.enabled = false;
+        row.model_slots.jev = "clef-flash".into();
+        let file = build_export(std::slice::from_ref(&row), &[], None, "6.3.1", Utc::now()).unwrap();
+        let plan = plan(&file, None, &empty_local(), Utc::now());
+        let got = &plan.inserts[0];
+        assert_eq!(got.provider_id, "custom-systemone");
+        assert!(got.is_user_defined);
+        assert_eq!(got.endpoint_protocol, crate::provider::model::EndpointProtocol::Systemone);
+        assert_eq!(got.systemone_wire, row.systemone_wire);
+        assert_eq!(got.base_url, row.base_url);
+        assert_eq!(got.messages_path, row.messages_path);
+        assert_eq!(got.model_slots.jev, "clef-flash");
+    }
     #[test]
     fn builtin_subscription_connection_comes_from_the_registry_not_the_file() {
         let providers = Arc::new(crate::provider::loader::load_all().unwrap());

@@ -140,6 +140,11 @@ pub const CUSTOM_OPENAI_CHAT_SOURCE_MARKER: &str = "custom-openai-chat";
 /// 对应 Google 新的 `/v1beta/interactions` 接口 (区别于 `CUSTOM_GEMINI_SOURCE_MARKER` 的旧 generateContent)。
 pub const CUSTOM_GEMINI_INTERACTIONS_SOURCE_MARKER: &str = "custom-gemini-interactions";
 
+/// 自定义 System One 订阅 (Jev / Clef 决策模型) 的来源标记常量。
+/// `auth_type` 仍是 [`AuthType::ApiKey`], 由快照里的 `endpoint_protocol = Systemone` 区分;
+/// 只进 model-jev, 走 [`crate::proxy::systemone`] 原样透传。
+pub const CUSTOM_SYSTEMONE_SOURCE_MARKER: &str = "custom-systemone";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelSlots {
     pub fable: String,

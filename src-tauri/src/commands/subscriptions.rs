@@ -19,7 +19,7 @@ use crate::subscription::{
         BalanceSnapshot, ModelCache, ModelInfo, ModelSlots, OAuthMetadata, SlotEfforts,
         SubscriptionDto, SubscriptionRow, SubscriptionRuntime, CUSTOM_GEMINI_INTERACTIONS_SOURCE_MARKER,
         CUSTOM_GEMINI_SOURCE_MARKER, CUSTOM_OPENAI_CHAT_SOURCE_MARKER, CUSTOM_OPENAI_SOURCE_MARKER,
-        CUSTOM_SOURCE_MARKER,
+        CUSTOM_SOURCE_MARKER, CUSTOM_SYSTEMONE_SOURCE_MARKER,
     },
     model_discovery, ping,
     quota::TokenQuotas,
@@ -44,6 +44,9 @@ pub enum CustomProtocol {
     /// step_list 翻译 + `auth_type=GeminiInteractionsApiKey` + `custom-gemini-interactions` provider_id.
     /// dispatch 走 [`crate::proxy::gemini_interactions_dispatch`].
     GeminiInteractions,
+    /// System One 决策模型 (Jev / Clef), 原样透传, 只进 model-jev。
+    /// dispatch 走 [`crate::proxy::systemone`], 不进 pipeline。
+    Systemone,
 }
 
 impl CustomProtocol {
@@ -54,12 +57,100 @@ impl CustomProtocol {
             Self::OpenaiResponses => AuthType::OpenaiResponsesApiKey,
             Self::OpenaiChatCompletions => AuthType::OpenaiChatCompletionsApiKey,
             Self::GeminiInteractions => AuthType::GeminiInteractionsApiKey,
+            Self::Systemone => AuthType::ApiKey,
         }
     }
 
     fn default_models_path(self) -> &'static str {
         model_discovery::default_models_path(self.auth_type())
     }
+}
+
+/// What a custom protocol writes into the subscription snapshot besides the user's own fields.
+struct CustomProfile {
+    marker: &'static str,
+    auth_type: AuthType,
+    icon: &'static str,
+    discovery: ModelDiscovery,
+    endpoint_protocol: EndpointProtocol,
+}
+
+fn custom_profile(protocol: CustomProtocol) -> CustomProfile {
+    let discovery = |path: &str| ModelDiscovery { enabled: true, path: path.into(), ..ModelDiscovery::default() };
+    let chat = |marker, auth_type, icon, discovery| CustomProfile {
+        marker,
+        auth_type,
+        icon,
+        discovery,
+        endpoint_protocol: EndpointProtocol::Messages,
+    };
+    match protocol {
+        // Gemini 端点通常都有 /v1beta/models, 默认启用自动发现; 失败时前端 manual fallback.
+        CustomProtocol::Gemini => {
+            chat(CUSTOM_GEMINI_SOURCE_MARKER, AuthType::GeminiApiKey, "google", discovery("/v1beta/models"))
+        }
+        // OpenAI 兼容 endpoint 普遍提供 /v1/models, 默认启用自动发现
+        CustomProtocol::OpenaiResponses => {
+            chat(CUSTOM_OPENAI_SOURCE_MARKER, AuthType::OpenaiResponsesApiKey, "openai", discovery("/v1/models"))
+        }
+        // OpenAI Chat Completions 兼容生态 (DeepSeek/Together/Groq 等) 普遍提供 /v1/models, 默认启用
+        CustomProtocol::OpenaiChatCompletions => chat(
+            CUSTOM_OPENAI_CHAT_SOURCE_MARKER,
+            AuthType::OpenaiChatCompletionsApiKey,
+            "openai",
+            discovery("/v1/models"),
+        ),
+        // Gemini 端点 (含 Interactions) 都在 generativelanguage.googleapis.com, 复用 /v1beta/models 自动发现.
+        CustomProtocol::GeminiInteractions => chat(
+            CUSTOM_GEMINI_INTERACTIONS_SOURCE_MARKER,
+            AuthType::GeminiInteractionsApiKey,
+            "google",
+            discovery("/v1beta/models"),
+        ),
+        // Anthropic 兼容中转的 base_url 形态最杂 (常带 /anthropic 之类 messages 专属前缀),
+        // 刷新时走 model_discovery 的候选探测, 这里只登记协议默认路径。
+        CustomProtocol::Anthropic => {
+            chat(CUSTOM_SOURCE_MARKER, AuthType::ApiKey, "custom", discovery(protocol.default_models_path()))
+        }
+        // No usable model list on any known System One upstream; the Jev slot is required instead.
+        CustomProtocol::Systemone => CustomProfile {
+            marker: CUSTOM_SYSTEMONE_SOURCE_MARKER,
+            auth_type: AuthType::ApiKey,
+            icon: "custom",
+            discovery: ModelDiscovery { enabled: false, ..ModelDiscovery::default() },
+            endpoint_protocol: EndpointProtocol::Systemone,
+        },
+    }
+}
+
+/// 自定义 System One 订阅没有示例模型可回退, Jev 槽空时 model-jev 会把虚拟名原样发给上游。
+pub(crate) fn require_jev_model(slots: &ModelSlots) -> AppResult<()> {
+    if slots.jev_model().is_none() {
+        return Err(AppError::BadRequest("自定义 System One 订阅必须填写 Jev 模型".into()));
+    }
+    Ok(())
+}
+
+/// systemone: only the trimmed Jev slot is kept (chat slots mean nothing there).
+/// Chat protocols: the Jev slot is dropped (a leftover from switching protocols in the form).
+pub(crate) fn normalize_custom_slots(protocol: CustomProtocol, slots: ModelSlots) -> AppResult<ModelSlots> {
+    if protocol == CustomProtocol::Systemone {
+        require_jev_model(&slots)?;
+        return Ok(ModelSlots {
+            fable: String::new(),
+            opus: String::new(),
+            sonnet: String::new(),
+            haiku: String::new(),
+            fallback: String::new(),
+            jev: slots.jev.trim().to_string(),
+        });
+    }
+    Ok(ModelSlots { jev: String::new(), ..slots })
+}
+
+/// 内置 systemone 订阅的 Jev 槽可空 (= 用端点示例模型); 只有自定义的必须有值。
+fn jev_required_on_update(is_user_defined: bool, protocol: EndpointProtocol) -> bool {
+    is_user_defined && protocol == EndpointProtocol::Systemone
 }
 
 /// 创建订阅时的 source 区分: 内置 yaml 模板 vs 用户自定义。
@@ -320,99 +411,28 @@ pub async fn create_subscription(
                 validate_base_url(u)?;
             }
             let is_gemini = protocol == CustomProtocol::Gemini;
-            let is_openai = protocol == CustomProtocol::OpenaiResponses;
-            let is_openai_chat = protocol == CustomProtocol::OpenaiChatCompletions;
-            let is_gemini_interactions = protocol == CustomProtocol::GeminiInteractions;
             if is_gemini {
                 validate_gemini_messages_path(&messages_path)?;
             }
             // Interactions API 的 model 在 body 里, messages_path 是固定 /v1beta/interactions,
             // 不需要 (也不应有) {model} 占位符 — 与旧 generateContent 的 Gemini 分支区别。
-            let (provider_id, endpoint_id, auth_type_choice, icon, discovery) = if is_gemini {
-                (
-                    CUSTOM_GEMINI_SOURCE_MARKER.to_string(),
-                    CUSTOM_GEMINI_SOURCE_MARKER.to_string(),
-                    AuthType::GeminiApiKey,
-                    "google".to_string(),
-                    // Gemini 端点通常都有 /v1beta/models, 默认启用自动发现; 失败时前端 manual fallback.
-                    ModelDiscovery {
-                        enabled: true,
-                        path: "/v1beta/models".into(),
-                        ..ModelDiscovery::default()
-                    },
-                )
-            } else if is_openai {
-                (
-                    CUSTOM_OPENAI_SOURCE_MARKER.to_string(),
-                    CUSTOM_OPENAI_SOURCE_MARKER.to_string(),
-                    AuthType::OpenaiResponsesApiKey,
-                    "openai".to_string(),
-                    // OpenAI 兼容 endpoint 普遍提供 /v1/models, 默认启用自动发现
-                    ModelDiscovery {
-                        enabled: true,
-                        path: "/v1/models".into(),
-                        ..ModelDiscovery::default()
-                    },
-                )
-            } else if is_openai_chat {
-                (
-                    CUSTOM_OPENAI_CHAT_SOURCE_MARKER.to_string(),
-                    CUSTOM_OPENAI_CHAT_SOURCE_MARKER.to_string(),
-                    AuthType::OpenaiChatCompletionsApiKey,
-                    "openai".to_string(),
-                    // OpenAI Chat Completions 兼容生态 (DeepSeek/Together/Groq 等) 普遍提供 /v1/models, 默认启用
-                    ModelDiscovery {
-                        enabled: true,
-                        path: "/v1/models".into(),
-                        ..ModelDiscovery::default()
-                    },
-                )
-            } else if is_gemini_interactions {
-                (
-                    CUSTOM_GEMINI_INTERACTIONS_SOURCE_MARKER.to_string(),
-                    CUSTOM_GEMINI_INTERACTIONS_SOURCE_MARKER.to_string(),
-                    AuthType::GeminiInteractionsApiKey,
-                    "google".to_string(),
-                    // Gemini 端点 (含 Interactions) 都在 generativelanguage.googleapis.com, 复用 /v1beta/models 自动发现.
-                    ModelDiscovery {
-                        enabled: true,
-                        path: "/v1beta/models".into(),
-                        ..ModelDiscovery::default()
-                    },
-                )
-            } else {
-                (
-                    CUSTOM_SOURCE_MARKER.to_string(),
-                    CUSTOM_SOURCE_MARKER.to_string(),
-                    AuthType::ApiKey,
-                    "custom".to_string(),
-                    // Anthropic 兼容中转的 base_url 形态最杂 (常带 /anthropic 之类 messages 专属前缀),
-                    // 刷新时走 model_discovery 的候选探测, 这里只登记协议默认路径。
-                    ModelDiscovery {
-                        enabled: true,
-                        path: protocol.default_models_path().into(),
-                        ..ModelDiscovery::default()
-                    },
-                )
-            };
+            let profile = custom_profile(protocol);
+            let model_slots = normalize_custom_slots(protocol, input.model_slots)?;
             // 表单里探测成功过 → 直接记下打通的地址, 优先于 base_url + path 拼接。
+            // System One 没有模型列表, 前端也不会传; 万一传了也不记。
             let discovery = match models_url {
-                Some(url) => ModelDiscovery {
-                    enabled: true,
-                    url: Some(url),
-                    ..discovery
-                },
-                None => discovery,
+                Some(url) if profile.discovery.enabled => ModelDiscovery { enabled: true, url: Some(url), ..profile.discovery },
+                _ => profile.discovery,
             };
             SubscriptionRow {
                 id,
-                provider_id,
-                endpoint_id,
+                provider_id: profile.marker.to_string(),
+                endpoint_id: profile.marker.to_string(),
                 display_name: input.display_name,
                 api_key: input.api_key,
-                auth_type: auth_type_choice,
+                auth_type: profile.auth_type,
                 oauth_metadata: OAuthMetadata::default(),
-                model_slots: input.model_slots,
+                model_slots,
                 slot_efforts: SlotEfforts::default(),
                 token_quotas: TokenQuotas::default(),
                 enabled: true,
@@ -427,14 +447,13 @@ pub async fn create_subscription(
                 required_headers: BTreeMap::new(),
                 forward_headers: Vec::new(),
                 forward_client_headers: false,
-                // 自定义入口暂不支持 systemone
-                endpoint_protocol: EndpointProtocol::Messages,
+                endpoint_protocol: profile.endpoint_protocol,
                 url_params: BTreeMap::new(),
                 systemone_wire: SystemoneWire::Standard,
                 model_discovery: discovery,
                 balance_discovery: None,
                 provider_display_name,
-                provider_icon: icon,
+                provider_icon: profile.icon.to_string(),
                 is_user_defined: true,
             }
         }
@@ -531,6 +550,15 @@ pub async fn update_subscription(
                 None => rt.read().await.row.auth_header_name.clone(),
             };
             validate_required_headers(hs, &effective_auth_name)?;
+        }
+    }
+    if let Some(slots) = patch.model_slots.as_ref() {
+        let required = {
+            let g = rt.read().await;
+            jev_required_on_update(g.row.is_user_defined, g.row.endpoint_protocol)
+        };
+        if required {
+            require_jev_model(slots)?;
         }
     }
     if let Some(efforts) = patch.slot_efforts.as_ref() {
@@ -1204,6 +1232,86 @@ mod tests {
         assert!(
             validate_required_headers(&hdrs(&[("X-DST", " eastus2 ")]), "Authorization").is_ok()
         );
+    }
+    fn slots_with_jev(jev: &str) -> ModelSlots {
+        ModelSlots {
+            fable: "f".into(),
+            opus: "o".into(),
+            sonnet: "s".into(),
+            haiku: "h".into(),
+            fallback: "fb".into(),
+            jev: jev.into(),
+        }
+    }
+
+    #[test]
+    fn systemone_profile_is_a_jev_only_api_key_subscription() {
+        let p = custom_profile(CustomProtocol::Systemone);
+        assert_eq!(p.marker, "custom-systemone");
+        assert_eq!(p.auth_type, AuthType::ApiKey);
+        assert_eq!(p.icon, "custom");
+        assert_eq!(p.endpoint_protocol, EndpointProtocol::Systemone);
+        assert!(!p.discovery.enabled, "System One 没有可用的模型列表");
+        assert!(p.discovery.example_models.is_empty());
+        assert!(p.discovery.url.is_none());
+    }
+
+    #[test]
+    fn chat_profiles_keep_their_previous_values() {
+        let cases = [
+            (CustomProtocol::Anthropic, "custom", AuthType::ApiKey, "custom"),
+            (CustomProtocol::Gemini, "custom-gemini", AuthType::GeminiApiKey, "google"),
+            (CustomProtocol::OpenaiResponses, "custom-openai", AuthType::OpenaiResponsesApiKey, "openai"),
+            (CustomProtocol::OpenaiChatCompletions, "custom-openai-chat", AuthType::OpenaiChatCompletionsApiKey, "openai"),
+            (CustomProtocol::GeminiInteractions, "custom-gemini-interactions", AuthType::GeminiInteractionsApiKey, "google"),
+        ];
+        for (protocol, marker, auth, icon) in cases {
+            let p = custom_profile(protocol);
+            assert_eq!((p.marker, p.auth_type, p.icon), (marker, auth, icon), "{protocol:?}");
+            assert_eq!(p.endpoint_protocol, EndpointProtocol::Messages, "{protocol:?}");
+            assert!(p.discovery.enabled, "{protocol:?}");
+        }
+        assert_eq!(custom_profile(CustomProtocol::Gemini).discovery.path, "/v1beta/models");
+        assert_eq!(custom_profile(CustomProtocol::OpenaiResponses).discovery.path, "/v1/models");
+    }
+
+    #[test]
+    fn require_jev_model_rejects_empty_and_blank() {
+        assert!(require_jev_model(&slots_with_jev("jev-latest")).is_ok());
+        for bad in ["", "   ", "\t"] {
+            let err = require_jev_model(&slots_with_jev(bad)).unwrap_err();
+            assert!(err.to_string().contains("自定义 System One 订阅必须填写 Jev 模型"), "{bad:?} -> {err}");
+        }
+    }
+
+    #[test]
+    fn normalize_systemone_keeps_only_the_trimmed_jev_slot() {
+        let out = normalize_custom_slots(CustomProtocol::Systemone, slots_with_jev("  jev-latest ")).unwrap();
+        assert_eq!(out.jev, "jev-latest");
+        for v in [&out.fable, &out.opus, &out.sonnet, &out.haiku, &out.fallback] {
+            assert!(v.is_empty(), "对话槽对 systemone 订阅无意义, 应清空: {out:?}");
+        }
+        assert!(normalize_custom_slots(CustomProtocol::Systemone, slots_with_jev(" ")).is_err());
+    }
+
+    #[test]
+    fn normalize_chat_protocol_drops_a_stale_jev_slot() {
+        let out = normalize_custom_slots(CustomProtocol::Anthropic, slots_with_jev("jev-latest")).unwrap();
+        assert_eq!(out.jev, "", "从 systemone 表单切过来时残留的 jev 槽不应落库");
+        assert_eq!((out.fable.as_str(), out.opus.as_str(), out.fallback.as_str()), ("f", "o", "fb"));
+    }
+
+    #[test]
+    fn update_rule_only_applies_to_user_defined_systemone() {
+        assert!(jev_required_on_update(true, EndpointProtocol::Systemone));
+        assert!(!jev_required_on_update(false, EndpointProtocol::Systemone), "内置 systemone: 槽空 = 用示例模型");
+        assert!(!jev_required_on_update(true, EndpointProtocol::Messages));
+    }
+
+    #[test]
+    fn systemone_wire_name_round_trips() {
+        let p: CustomProtocol = serde_json::from_value(serde_json::json!("systemone")).unwrap();
+        assert_eq!(p, CustomProtocol::Systemone);
     }
 }
 
