@@ -21,6 +21,8 @@ pub mod tls;
 pub mod tray;
 #[cfg(test)]
 mod tui_contract;
+#[cfg(test)]
+mod zh_hant_check;
 pub mod tui_install;
 pub mod updater_source;
 pub mod virtual_model;
