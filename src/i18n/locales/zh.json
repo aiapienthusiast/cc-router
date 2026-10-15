@@ -164,7 +164,7 @@
   "settings.storage.usageLoading": "正在读取存储占用…",
   "settings.section.language": "语言",
   "settings.language.label": "界面语言",
-  "settings.language.desc": "选择 cc-router 界面显示语言。「跟随系统」会读取系统语言:中文 → 中文,日语 → 日本語,其他 → English。",
+  "settings.language.desc": "选择 cc-router 界面显示语言。「跟随系统」会读取系统语言:简体中文 → 简体中文,繁体中文(台湾 / 香港 / 澳门) → 繁體中文,日语 → 日本語,其他 → English。",
   "settings.language.system": "跟随系统",
   "settings.section.appearance": "外观",
   "settings.appearance.theme.label": "界面主题",
@@ -1141,7 +1141,8 @@
   "releaseNotes.langs": "说明语言",
   "releaseNotes.unread": "有未读的更新内容",
   "releaseNotes.fallback": "这个版本没有{lang}说明，下面显示{shown}。",
-  "releaseNotes.lang.zh": "中文",
+  "releaseNotes.lang.zh": "简体中文",
+  "releaseNotes.lang.zh-Hant": "繁体中文",
   "releaseNotes.lang.en": "英文",
   "releaseNotes.lang.ja": "日文"
 }

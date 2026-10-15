@@ -164,7 +164,7 @@
   "settings.storage.usageLoading": "Reading storage usage…",
   "settings.section.language": "Language",
   "settings.language.label": "UI language",
-  "settings.language.desc": "Choose the cc-router UI display language. \"Follow system\" reads your system locale: Chinese → 中文, Japanese → 日本語, otherwise → English.",
+  "settings.language.desc": "Choose the cc-router UI display language. \"Follow system\" reads your system locale: Simplified Chinese → 简体中文, Traditional Chinese (Taiwan / Hong Kong / Macau) → 繁體中文, Japanese → 日本語, otherwise → English.",
   "settings.language.system": "Follow system",
   "settings.section.appearance": "Appearance",
   "settings.appearance.theme.label": "Theme",
@@ -1141,7 +1141,8 @@
   "releaseNotes.langs": "Notes language",
   "releaseNotes.unread": "Unread release notes",
   "releaseNotes.fallback": "No {lang} notes for this version, showing {shown}.",
-  "releaseNotes.lang.zh": "Chinese",
+  "releaseNotes.lang.zh": "Simplified Chinese",
+  "releaseNotes.lang.zh-Hant": "Traditional Chinese",
   "releaseNotes.lang.en": "English",
   "releaseNotes.lang.ja": "Japanese"
 }
