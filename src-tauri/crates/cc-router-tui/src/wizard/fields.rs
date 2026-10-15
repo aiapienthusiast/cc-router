@@ -276,25 +276,30 @@ pub enum CustomField {
 }
 
 impl CustomField {
-    /// 焦点导航顺序。`auth_locked` 为真时 `Auth` 被剔除在外 (↑↓ 跳过它)——这一行仍然会被画出来
+    /// 焦点导航顺序。锁定鉴权的协议把 `Auth` 剔除在外 (↑↓ 跳过它)——这一行仍然会被画出来
     /// (锁定态, muted), 只是键盘导航永远不会落到它上面; `⏎` 在它身上的时候 (理论上不该发生,
-    /// 见 `wizard::common::handle_key` 的 `FieldKind::Locked` 分支) 也什么都不做。
-    pub fn all(auth_locked: bool) -> Vec<CustomField> {
+    /// 见 `wizard::common::handle_key` 的 `FieldKind::Locked` 分支) 也什么都不做。System One 没有
+    /// 模型列表也没有对话槽: 不出现 `Probe`, 槽位只有 `Jev` 一行。
+    pub fn all(protocol: CustomProtocol) -> Vec<CustomField> {
         let mut fields = vec![CustomField::Protocol, CustomField::ProviderName, CustomField::BaseUrl, CustomField::MessagesPath];
-        if !auth_locked {
+        if !protocol.auth_locked() {
             fields.push(CustomField::Auth);
         }
         fields.push(CustomField::ApiKey);
         fields.push(CustomField::DisplayName);
-        fields.push(CustomField::Probe);
-        fields.extend([Slot::Fable, Slot::Opus, Slot::Sonnet, Slot::Haiku, Slot::Fallback].map(CustomField::Slot));
+        if protocol.is_systemone() {
+            fields.push(CustomField::Slot(Slot::Jev));
+        } else {
+            fields.push(CustomField::Probe);
+            fields.extend([Slot::Fable, Slot::Opus, Slot::Sonnet, Slot::Haiku, Slot::Fallback].map(CustomField::Slot));
+        }
         fields.push(CustomField::Submit);
         fields
     }
 }
 
 /// 校验顺序与桌面端 `saveCustom` 逐条对齐: 厂商名 → base_url 非空 → base_url 前缀 →
-/// messages_path 前缀 → gemini 的 `{model}` → API Key → 备注名 → 四个核心槽。
+/// messages_path 前缀 → gemini 的 `{model}` → API Key → 备注名 → 四个核心槽 (System One 只校验 Jev 槽)。
 ///
 /// **`base_url`/`messages_path` 校验的是 `trim` 后的值, 不是原样的草稿字符串**——这是有意
 /// 修正桌面端"校验不 trim、提交时才 trim"的不一致 (桌面端校验用原始输入, 真正发请求前才
@@ -324,6 +329,10 @@ pub fn validate_custom(d: &CustomDraft, s: &'static Strings) -> Option<(CustomFi
     }
     if d.display_name.value().trim().is_empty() {
         return Some((CustomField::DisplayName, s.wiz_err_display_name));
+    }
+    if d.protocol.is_systemone() {
+        // 与后端 `require_jev_model` 同规则: trim 后非空。
+        return d.slots.slots.jev.trim().is_empty().then_some((CustomField::Slot(Slot::Jev), s.wiz_err_jev_model));
     }
     validate_slots(&d.slots, s).map(|(slot, message)| (CustomField::Slot(slot), message))
 }
@@ -510,6 +519,40 @@ mod tests {
     /// 逐条构造只违反其中一条规则的草稿, 断言 `validate_custom` 报的是那一条、不是别的——顺序
     /// 与桌面端 `saveCustom` 一致: 厂商名 → base_url 非空 → base_url 前缀 → messages_path
     /// 前缀 → gemini 的 `{model}` → API Key → 备注名 → 四个核心槽。
+    #[test]
+    fn systemone_field_order_has_one_jev_row_and_no_probe() {
+        assert_eq!(
+            CustomField::all(CustomProtocol::Systemone),
+            vec![
+                CustomField::Protocol,
+                CustomField::ProviderName,
+                CustomField::BaseUrl,
+                CustomField::MessagesPath,
+                CustomField::Auth,
+                CustomField::ApiKey,
+                CustomField::DisplayName,
+                CustomField::Slot(Slot::Jev),
+                CustomField::Submit,
+            ]
+        );
+        let chat = CustomField::all(CustomProtocol::Anthropic);
+        assert!(chat.contains(&CustomField::Probe) && !chat.contains(&CustomField::Slot(Slot::Jev)));
+        assert!(!CustomField::all(CustomProtocol::Gemini).contains(&CustomField::Auth), "锁定协议仍剔除 Auth");
+    }
+
+    #[test]
+    fn systemone_validation_requires_a_non_blank_jev_model_only() {
+        let s = &crate::i18n::ZH;
+        let mut d = filled_custom_draft(CustomProtocol::Systemone);
+        for blank in ["", "   "] {
+            d.slots.slots.jev = blank.into();
+            assert_eq!(validate_custom(&d, s), Some((CustomField::Slot(Slot::Jev), s.wiz_err_jev_model)), "{blank:?}");
+        }
+        d.slots.slots.jev = "jev-latest".into();
+        d.slots.slots.opus = String::new();
+        assert_eq!(validate_custom(&d, s), None, "System One 不校验四个对话槽");
+    }
+
     #[test]
     fn validate_custom_follows_the_desktop_order() {
         let s = &crate::i18n::ZH;

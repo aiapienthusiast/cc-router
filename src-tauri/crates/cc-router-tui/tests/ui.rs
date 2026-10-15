@@ -1310,6 +1310,17 @@ fn wizard_custom_80x24() {
     insta::assert_snapshot!(render(&mut custom_wizard_probed_and_filled(), 80, 24));
 }
 
+/// System One 自定义单页: 只有一行 Jev 槽, 没有「获取模型列表」按钮。
+#[test]
+fn wizard_custom_systemone_80x24() {
+    let mut a = wizard_custom(CustomProtocol::Systemone);
+    fill_custom(
+        &mut a,
+        CustomFill { provider_name: Some("局域网 Ollama"), base_url: Some("http://192.168.1.20:11434"), api_key: Some("ollama"), ..Default::default() },
+    );
+    insta::assert_snapshot!(render(&mut a, 80, 24));
+}
+
 /// `wizard_custom_80x24` 的画面 (各语言的快照共用同一条驱动路径)。
 fn custom_wizard_probed_and_filled() -> App {
     let mut a = wizard_custom(CustomProtocol::Anthropic);

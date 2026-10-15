@@ -44,7 +44,7 @@ impl FormFields for CustomForm {
     }
 
     fn order(&self) -> Vec<CustomField> {
-        CustomField::all(self.draft.protocol.auth_locked())
+        CustomField::all(self.draft.protocol)
     }
 
     fn kind(&self, field: CustomField, s: &'static Strings) -> FieldKind {
@@ -267,8 +267,15 @@ impl CustomForm {
             CustomField::DisplayName,
             Cell { label: s.wiz_f_display_name, value: d.display_name.value(), ..Cell::default() },
         );
-        rows.button(CustomField::Probe, probing.then_some(s.wiz_probing));
-        rows.slots(&d.slots.slots, CustomField::Slot);
+        if d.protocol.is_systemone() {
+            rows.field(
+                CustomField::Slot(Slot::Jev),
+                Cell { label: crate::format::slot_label(Slot::Jev, s), value: d.slots.slots.get(Slot::Jev), ..Cell::default() },
+            );
+        } else {
+            rows.button(CustomField::Probe, probing.then_some(s.wiz_probing));
+            rows.slots(&d.slots.slots, CustomField::Slot);
+        }
         rows.button(CustomField::Submit, creating.then_some(s.wiz_creating));
         let built = rows.finish();
         let focus_index = built.focus;
