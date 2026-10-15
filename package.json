@@ -11,7 +11,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "version:set": "node scripts/set-version.mjs",
-    "icon:macos": "node scripts/make-macos-icon.mjs"
+    "icon:macos": "node scripts/make-macos-icon.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
