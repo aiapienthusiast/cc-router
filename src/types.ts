@@ -394,7 +394,7 @@ export type CreateSource =
       messages_path: string;
       auth_header_name: string;
       auth_header_format: AuthHeaderFormat;
-      /** 协议家族 — 缺省=anthropic 透传; "gemini"=Gemini generateContent 翻译; "gemini_interactions"=Gemini Interactions API 翻译; "openai_responses"=OpenAI Responses 翻译; "openai_chat_completions"=OpenAI Chat Completions 翻译 (DeepSeek/Together/Groq/Ollama 等兼容生态) */
+      /** 协议家族 — 缺省=anthropic 透传; "gemini"=Gemini generateContent 翻译; "gemini_interactions"=Gemini Interactions API 翻译; "openai_responses"=OpenAI Responses 翻译; "openai_chat_completions"=OpenAI Chat Completions 翻译 (DeepSeek/Together/Groq/Ollama 等兼容生态); "systemone"=System One 决策模型原样透传, 只进 model-jev */
       protocol?: CustomProtocol;
       /** 表单里「获取模型列表」实际打通的地址 (probe_custom_models 返回值原样回传); 没探测过则省略 */
       models_url?: string;
@@ -405,7 +405,8 @@ export type CustomProtocol =
   | "gemini"
   | "gemini_interactions"
   | "openai_responses"
-  | "openai_chat_completions";
+  | "openai_chat_completions"
+  | "systemone";
 
 /** probe_custom_models 入参: 保存前探测, 不落库 */
 export interface ProbeCustomModelsInput {

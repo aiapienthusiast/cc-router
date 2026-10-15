@@ -7,7 +7,7 @@ import { ProviderBadge } from "@/components/ProviderBadge";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { ProviderCapabilityTags } from "@/components/ProviderCapabilityTags";
 import { UrlParamFields, urlParamErrors } from "@/components/UrlParamFields";
-import { CUSTOM_CAPABILITIES, providerCapabilities } from "@/lib/providerCapabilities";
+import { CUSTOM_CAPABILITIES, CUSTOM_JEV_CAPABILITIES, providerCapabilities } from "@/lib/providerCapabilities";
 import { Spinner } from "@/components/Spinner";
 import { ModelSlotPicker } from "@/components/ModelSlotPicker";
 import { ChatGptOAuthDialog } from "@/components/ChatGptOAuthDialog";
@@ -52,6 +52,7 @@ const CUSTOM_GEMINI_VALUE = "custom-gemini";
 const CUSTOM_GEMINI_INTERACTIONS_VALUE = "custom-gemini-interactions";
 const CUSTOM_OPENAI_VALUE = "custom-openai";
 const CUSTOM_OPENAI_CHAT_VALUE = "custom-openai-chat";
+const CUSTOM_SYSTEMONE_VALUE = "custom-systemone";
 
 /** 自定义 Anthropic 兼容路径的鉴权方式预设: 选一个就同时确定 header_name + header_format */
 type AuthPreset = "bearer" | "x_api_key";
@@ -64,7 +65,8 @@ type CustomProtocolValue =
   | typeof CUSTOM_GEMINI_VALUE
   | typeof CUSTOM_GEMINI_INTERACTIONS_VALUE
   | typeof CUSTOM_OPENAI_VALUE
-  | typeof CUSTOM_OPENAI_CHAT_VALUE;
+  | typeof CUSTOM_OPENAI_CHAT_VALUE
+  | typeof CUSTOM_SYSTEMONE_VALUE;
 
 /** 所有走 LOCKED_CUSTOM_PRESETS 的 sentinel 列表 (避免链式 || 判断, 后续加协议时只动这一行). */
 const LOCKED_CUSTOM_VALUES: readonly string[] = [
@@ -72,80 +74,97 @@ const LOCKED_CUSTOM_VALUES: readonly string[] = [
   CUSTOM_GEMINI_INTERACTIONS_VALUE,
   CUSTOM_OPENAI_VALUE,
   CUSTOM_OPENAI_CHAT_VALUE,
+  CUSTOM_SYSTEMONE_VALUE,
 ];
 
-/** 锁定连接参数的自定义协议预设 (Gemini / OpenAI Responses / OpenAI Chat Completions 走这里;
- *  Anthropic 兼容走 AUTH_PRESETS dropdown). */
+/** 需要预填连接参数的自定义协议预设 (Gemini / OpenAI Responses / OpenAI Chat Completions / System One);
+ *  Anthropic 兼容走 AUTH_PRESETS dropdown。`lockedAuth` 缺省的预设同样走那个 dropdown。 */
 const LOCKED_CUSTOM_PRESETS: Record<CustomProtocolValue, {
   baseUrl: string;
   messagesPath: string;
-  authHeaderName: string;
-  authHeaderFormat: AuthHeaderFormat;
   iconId: string;
   triggerLabelKey: string;
   hintKey: string;
   baseUrlHintKey: string;
   messagesPathHintKey: string;
-  authLockedHintKey: string;
-  authLockedDisplay: string;
-  protocol: "gemini" | "gemini_interactions" | "openai_responses" | "openai_chat_completions";
+  /** 有值 = 鉴权头锁定成这一对; 缺省 = 用户在 AUTH_PRESETS 两个预设里选 (同自定义 Anthropic) */
+  lockedAuth?: { headerName: string; headerFormat: AuthHeaderFormat; hintKey: string; display: string };
+  protocol: "gemini" | "gemini_interactions" | "openai_responses" | "openai_chat_completions" | "systemone";
 }> = {
   [CUSTOM_GEMINI_VALUE]: {
     baseUrl: "https://generativelanguage.googleapis.com",
     messagesPath: "/v1beta/models/{model}:streamGenerateContent",
-    authHeaderName: "x-goog-api-key",
-    authHeaderFormat: "raw",
     iconId: "google",
     triggerLabelKey: "subscriptionNew.customGeminiProvider",
     hintKey: "subscriptionNew.customGeminiHint",
     baseUrlHintKey: "subscriptionNew.geminiBaseUrlHint",
     messagesPathHintKey: "subscriptionNew.geminiMessagesPathHint",
-    authLockedHintKey: "subscriptionNew.geminiAuthLocked",
-    authLockedDisplay: "x-goog-api-key: <key>",
+    lockedAuth: {
+      headerName: "x-goog-api-key",
+      headerFormat: "raw",
+      hintKey: "subscriptionNew.geminiAuthLocked",
+      display: "x-goog-api-key: <key>",
+    },
     protocol: "gemini",
   },
   [CUSTOM_GEMINI_INTERACTIONS_VALUE]: {
     baseUrl: "https://generativelanguage.googleapis.com",
     messagesPath: "/v1beta/interactions",
-    authHeaderName: "x-goog-api-key",
-    authHeaderFormat: "raw",
     iconId: "google",
     triggerLabelKey: "subscriptionNew.customGeminiInteractionsProvider",
     hintKey: "subscriptionNew.customGeminiInteractionsHint",
     baseUrlHintKey: "subscriptionNew.geminiInteractionsBaseUrlHint",
     messagesPathHintKey: "subscriptionNew.geminiInteractionsMessagesPathHint",
-    authLockedHintKey: "subscriptionNew.geminiInteractionsAuthLocked",
-    authLockedDisplay: "x-goog-api-key: <key>",
+    lockedAuth: {
+      headerName: "x-goog-api-key",
+      headerFormat: "raw",
+      hintKey: "subscriptionNew.geminiInteractionsAuthLocked",
+      display: "x-goog-api-key: <key>",
+    },
     protocol: "gemini_interactions",
   },
   [CUSTOM_OPENAI_VALUE]: {
     baseUrl: "https://api.openai.com",
     messagesPath: "/v1/responses",
-    authHeaderName: "Authorization",
-    authHeaderFormat: "bearer",
     iconId: "openai",
     triggerLabelKey: "subscriptionNew.customOpenaiProvider",
     hintKey: "subscriptionNew.customOpenaiHint",
     baseUrlHintKey: "subscriptionNew.openaiBaseUrlHint",
     messagesPathHintKey: "subscriptionNew.openaiMessagesPathHint",
-    authLockedHintKey: "subscriptionNew.openaiAuthLocked",
-    authLockedDisplay: "Authorization: Bearer <key>",
+    lockedAuth: {
+      headerName: "Authorization",
+      headerFormat: "bearer",
+      hintKey: "subscriptionNew.openaiAuthLocked",
+      display: "Authorization: Bearer <key>",
+    },
     protocol: "openai_responses",
   },
   [CUSTOM_OPENAI_CHAT_VALUE]: {
     // 默认引导值给 OpenAI 官方, 实际更常用的是 DeepSeek/Together/Groq/Ollama (用户在 hint 里看到示例后改 base_url 一项即可)
     baseUrl: "https://api.openai.com",
     messagesPath: "/v1/chat/completions",
-    authHeaderName: "Authorization",
-    authHeaderFormat: "bearer",
     iconId: "openai",
     triggerLabelKey: "subscriptionNew.customOpenaiChatProvider",
     hintKey: "subscriptionNew.customOpenaiChatHint",
     baseUrlHintKey: "subscriptionNew.openaiChatBaseUrlHint",
     messagesPathHintKey: "subscriptionNew.openaiChatMessagesPathHint",
-    authLockedHintKey: "subscriptionNew.openaiChatAuthLocked",
-    authLockedDisplay: "Authorization: Bearer <key>",
+    lockedAuth: {
+      headerName: "Authorization",
+      headerFormat: "bearer",
+      hintKey: "subscriptionNew.openaiChatAuthLocked",
+      display: "Authorization: Bearer <key>",
+    },
     protocol: "openai_chat_completions",
+  },
+  [CUSTOM_SYSTEMONE_VALUE]: {
+    baseUrl: "https://api.typesafe.ai",
+    messagesPath: "/v1/systemone",
+    iconId: "custom",
+    triggerLabelKey: "subscriptionNew.customSystemoneProvider",
+    hintKey: "subscriptionNew.customSystemoneHint",
+    baseUrlHintKey: "subscriptionNew.systemoneBaseUrlHint",
+    messagesPathHintKey: "subscriptionNew.systemoneMessagesPathHint",
+    protocol: "systemone",
   },
 };
 
@@ -239,7 +258,8 @@ export function SubscriptionNewPage() {
     [provider, endpointId],
   );
   const isChatGptOAuth = provider?.auth.type === "chatgpt_oauth";
-  const isSystemOne = endpoint?.protocol === "systemone";
+  // 内置 systemone 端点, 或自定义 System One 预设
+  const isSystemOne = endpoint?.protocol === "systemone" || lockedPreset?.protocol === "systemone";
   const isKiroOAuth = provider?.auth.type === "kiro_oauth";
 
   // ChatGPT OAuth 流程 state. deviceCode + account 同生命周期, 合一份
@@ -591,9 +611,10 @@ export function SubscriptionNewPage() {
   }
 
   function customAuthHeader(): { name: string; format: AuthHeaderFormat } {
+    const locked = lockedPreset?.lockedAuth;
     return {
-      name: lockedPreset?.authHeaderName ?? AUTH_PRESETS[customAuthPreset].name,
-      format: lockedPreset?.authHeaderFormat ?? AUTH_PRESETS[customAuthPreset].format,
+      name: locked?.headerName ?? AUTH_PRESETS[customAuthPreset].name,
+      format: locked?.headerFormat ?? AUTH_PRESETS[customAuthPreset].format,
     };
   }
 
@@ -649,7 +670,9 @@ export function SubscriptionNewPage() {
     }
     if (!apiKey) return setSubmitError(t("subscriptionNew.errFillKey"));
     if (!displayName) return setSubmitError(t("subscriptionNew.errFillNote"));
-    if (!allSlotsFilled(slots)) {
+    if (isSystemOne) {
+      if (!slots.jev?.trim()) return setSubmitError(t("subscriptionNew.errFillJevModel"));
+    } else if (!allSlotsFilled(slots)) {
       return setSubmitError(t("subscriptionNew.errFillSlots"));
     }
 
@@ -661,7 +684,8 @@ export function SubscriptionNewPage() {
     const input: CreateSubscriptionInput = {
       display_name: displayName,
       api_key: apiKey,
-      model_slots: slots,
+      // 后端 normalize_custom_slots 也会归一, 这里只发有意义的部分
+      model_slots: isSystemOne ? { ...uniformSlots(""), jev: slots.jev?.trim() ?? "" } : slots,
       source: {
         kind: "custom",
         provider_display_name: customProviderName,
@@ -670,7 +694,7 @@ export function SubscriptionNewPage() {
         auth_header_name: headerName,
         auth_header_format: headerFormat,
         ...protocolOverride,
-        ...(customProbe && customProbe.baseUrl === baseUrl
+        ...(!isSystemOne && customProbe && customProbe.baseUrl === baseUrl
           ? { models_url: customProbe.modelsUrl }
           : {}),
       },
@@ -686,7 +710,7 @@ export function SubscriptionNewPage() {
           patch: { slot_efforts: slotEfforts },
         });
       }
-      await bindToVirtualModelsIfOnboarding(created.id, "messages");
+      await bindToVirtualModelsIfOnboarding(created.id, created.endpoint_protocol);
       if (isOnboarding) {
         navigate("/guide", { replace: true });
         return;
@@ -842,6 +866,13 @@ export function SubscriptionNewPage() {
                                 <ProviderCapabilityTags caps={CUSTOM_CAPABILITIES} />
                                 </span>
                               </SelectItem>
+                              <SelectItem value={CUSTOM_SYSTEMONE_VALUE}>
+                                <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                                  <ProviderLogo iconId="custom" size={20} />
+                                  {t("subscriptionNew.customSystemoneProvider")}
+                                <ProviderCapabilityTags caps={CUSTOM_JEV_CAPABILITIES} />
+                                </span>
+                              </SelectItem>
                             </SelectGroup>
                           </>
                         );
@@ -979,14 +1010,14 @@ export function SubscriptionNewPage() {
                       </div>
                     </div>
 
-                    {lockedPreset ? (
+                    {lockedPreset?.lockedAuth ? (
                       <div style={{ marginBottom: 20 }}>
                         <label className="field-label">{t("subscriptionNew.authMethod")}</label>
                         <div className="mono field-hint" style={{ marginTop: 4 }}>
-                          {lockedPreset.authLockedDisplay}
+                          {lockedPreset.lockedAuth.display}
                         </div>
                         <div className="field-hint" style={{ marginTop: 6 }}>
-                          {t(lockedPreset.authLockedHintKey)}
+                          {t(lockedPreset.lockedAuth.hintKey)}
                         </div>
                       </div>
                     ) : (
@@ -1140,19 +1171,34 @@ export function SubscriptionNewPage() {
                 {isCustom && (
                   <div style={{ marginBottom: 24 }}>
                     <div className="field-hint" style={{ marginTop: 0, marginBottom: 12 }}>
-                      {t("subscriptionNew.slotsHint")}
+                      {t(isSystemOne ? "subscriptionNew.customSystemoneSlotsHint" : "subscriptionNew.slotsHint")}
                     </div>
-                    <ModelSlotPicker
-                      value={slots}
-                      onChange={setSlots}
-                      efforts={slotEfforts}
-                      onEffortsChange={setSlotEfforts}
-                      models={models}
-                      loading={fetchingModels}
-                      error={modelFetchError}
-                      onRefresh={probeCustomModels}
-                      refreshLabel={t("subscriptionNew.fetchModels")}
-                    />
+                    {isSystemOne ? (
+                      <ModelSlotPicker
+                        value={slots}
+                        onChange={setSlots}
+                        efforts={slotEfforts}
+                        onEffortsChange={setSlotEfforts}
+                        models={null}
+                        loading={false}
+                        error={null}
+                        exampleModels={[]}
+                        systemone
+                        jevRequired
+                      />
+                    ) : (
+                      <ModelSlotPicker
+                        value={slots}
+                        onChange={setSlots}
+                        efforts={slotEfforts}
+                        onEffortsChange={setSlotEfforts}
+                        models={models}
+                        loading={fetchingModels}
+                        error={modelFetchError}
+                        onRefresh={probeCustomModels}
+                        refreshLabel={t("subscriptionNew.fetchModels")}
+                      />
+                    )}
                   </div>
                 )}
 

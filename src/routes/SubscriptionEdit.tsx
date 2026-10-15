@@ -176,6 +176,10 @@ export function SubscriptionEditPage() {
   async function save() {
     if (!id || !sub) return;
     setSaveError(null);
+    // 自定义 System One 订阅没有示例模型可回退 (后端 require_jev_model 同规则)
+    if (sub.is_user_defined && sub.endpoint_protocol === "systemone" && !slots.jev?.trim()) {
+      return setSaveError(t("subscriptionNew.errFillJevModel"));
+    }
     const patch: SubscriptionPatch = {
       display_name: displayName,
       model_slots: slots,
@@ -504,6 +508,7 @@ export function SubscriptionEditPage() {
                       : sub.model_discovery.example_models
                   }
                   systemone={isSystemOne}
+                  jevRequired={isSystemOne && sub.is_user_defined}
                 />
                 {sub.model_cache && !isSystemOne && (
                   <div className="mt-3 text-xs text-muted-foreground">

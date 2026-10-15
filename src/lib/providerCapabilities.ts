@@ -14,5 +14,7 @@ export function providerCapabilities(p: Pick<ProviderInfo, "endpoints">): Provid
   };
 }
 
-/** 自定义入口 (5 种协议) 都是对话类。 */
+/** 自定义对话类入口 (5 种协议)。 */
 export const CUSTOM_CAPABILITIES: ProviderCapabilities = { llm: true, jev: false };
+/** 自定义 System One 入口: 只服务 model-jev。 */
+export const CUSTOM_JEV_CAPABILITIES: ProviderCapabilities = { llm: false, jev: true };

@@ -22,6 +22,7 @@ const CUSTOM_PROVIDER_META: Record<string, CustomProviderMeta> = {
   },
   "custom-openai": { labelKey: "provider.custom.openaiResponses", iconId: "openai" },
   "custom-openai-chat": { labelKey: "provider.custom.openaiChat", iconId: "openai" },
+  "custom-systemone": { labelKey: "provider.custom.systemone", iconId: "custom" },
 };
 
 /** migration 014 之前的旧格式别名, 兜底任何未迁移的残留展示场景 */

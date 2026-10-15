@@ -38,6 +38,8 @@ interface Props {
   disabled?: boolean;
   /** systemone 订阅: 只显示 Jev 槽一行, 隐藏 effort 与刷新按钮 */
   systemone?: boolean;
+  /** 自定义 systemone 订阅: 没有示例模型可回退, Jev 槽必填 (换成不带「可选」的文案) */
+  jevRequired?: boolean;
 }
 
 type SlotRow = { key: keyof ModelSlots; labelKey: string; hintKey: string };
@@ -66,6 +68,13 @@ const JEV_ROW: SlotRow = {
   hintKey: "modelSlot.jev.hint",
 };
 
+/** 自定义 System One 订阅的 Jev 行: 必填, 不提「示例模型」(自定义订阅没有)。 */
+const JEV_REQUIRED_ROW: SlotRow = {
+  key: "jev",
+  labelKey: "modelSlot.jev.requiredLabel",
+  hintKey: "modelSlot.jev.requiredHint",
+};
+
 export function ModelSlotPicker({
   value,
   onChange,
@@ -81,6 +90,7 @@ export function ModelSlotPicker({
   exampleModels,
   disabled,
   systemone,
+  jevRequired,
 }: Props) {
   const { t } = useT();
   // null 表示还没初始化;一旦用户主动点击切换,userChose 置 true,不再被外部 data 反向覆盖。
@@ -227,8 +237,8 @@ export function ModelSlotPicker({
       )}
 
       <div style={{ display: "grid", gap: 14 }}>
-        {(systemone ? [JEV_ROW] : [...SLOTS, FALLBACK_ROW]).map(({ key, labelKey, hintKey }) => {
-          const isOptionalSlot = key === "fallback" || key === "jev";
+        {(systemone ? [jevRequired ? JEV_REQUIRED_ROW : JEV_ROW] : [...SLOTS, FALLBACK_ROW]).map(({ key, labelKey, hintKey }) => {
+          const isOptionalSlot = key === "fallback" || (key === "jev" && !jevRequired);
           const current = value[key] ?? "";
           const inList = !!models && models.some((m) => m.id === current);
           const showHistorical =
@@ -281,7 +291,7 @@ export function ModelSlotPicker({
                       value={current}
                       onChange={(e) => update(key, e.target.value)}
                       placeholder={
-                        key === "jev"
+                        key === "jev" && !jevRequired
                           ? t("modelSlot.jev.none")
                           : isOptionalSlot
                             ? t("modelSlot.fallback.none")
