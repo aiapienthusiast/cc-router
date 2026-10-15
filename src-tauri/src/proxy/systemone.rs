@@ -438,14 +438,15 @@ pub async fn dispatch(state: &AppState, raw_body: Bytes, client_model: String, c
     }
 
     let mut cands = Vec::new();
-    let mut skipped_wrong_protocol = Vec::new();
+    // display_name -> why it was left out; read back when every candidate failed.
+    let mut skipped: Vec<(String, SkipReason)> = Vec::new();
     for sub_id in &order.candidate_ids {
         let Some(rt) = state.get_subscription(sub_id).await else { continue };
         let g = rt.read().await;
-        // 运行时守卫: 写入 / 导入已拦跨类绑定, 这里兜历史数据。
-        if g.row.endpoint_protocol != EndpointProtocol::Systemone {
-            warn!(%sub_id, display_name = %g.row.display_name, "non-systemone subscription skipped under model-jev");
-            skipped_wrong_protocol.push(g.row.display_name.clone());
+        // 运行时守卫: 跨类绑定 (写入 / 导入已拦, 兜历史数据) 与未配置 Jev 模型 (新建 / 编辑已拦, 兜导入)。
+        if let Some(reason) = skip_reason(&g.row, &client_model) {
+            warn!(%sub_id, display_name = %g.row.display_name, ?reason, "systemone candidate skipped");
+            skipped.push((g.row.display_name.clone(), reason));
             continue;
         }
         let outbound = match build_outbound(&g.row, &raw_body, &client_model) {
@@ -491,7 +492,7 @@ pub async fn dispatch(state: &AppState, raw_body: Bytes, client_model: String, c
                         &g.row.display_name,
                         &format!("{:?}", g.state),
                         exceeded,
-                        skipped_wrong_protocol.contains(&g.row.display_name),
+                        skipped.iter().find(|(n, _)| n == &g.row.display_name).map(|(_, r)| *r),
                     ));
                 }
             }
@@ -510,10 +511,31 @@ pub async fn dispatch(state: &AppState, raw_body: Bytes, client_model: String, c
     }
 }
 
-/// 503 摘要里一条订阅的说明: 跨类跳过优先, 其次是 token 限额 (限额只让订阅不可调度, 状态仍是 Healthy), 最后才是状态。
-fn summary_line(display_name: &str, state: &str, exceeded: Option<&str>, skipped_wrong_protocol: bool) -> String {
-    if skipped_wrong_protocol {
-        return format!("- {display_name}: 不是 System One 订阅, 已跳过");
+/// Why a bound subscription was left out of this request's candidates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SkipReason {
+    /// Bound to model-jev but not a System One subscription (history; writes / imports refuse it).
+    WrongProtocol,
+    /// The client asked for the virtual name, and the subscription has neither a Jev slot nor
+    /// an example model to map it to — sending `model-jev` upstream is a guaranteed 4xx.
+    /// A per-subscription config problem, so skip it instead of failing the whole request.
+    NoJevModel,
+}
+
+fn skip_reason(row: &SubscriptionRow, client_model: &str) -> Option<SkipReason> {
+    if row.endpoint_protocol != EndpointProtocol::Systemone {
+        return Some(SkipReason::WrongProtocol);
+    }
+    let wants_virtual = VirtualModelName::parse(client_model) == Some(VirtualModelName::Jev);
+    (wants_virtual && target_model(row, client_model).is_none()).then_some(SkipReason::NoJevModel)
+}
+
+/// 503 摘要里一条订阅的说明: 跳过原因优先, 其次是 token 限额 (限额只让订阅不可调度, 状态仍是 Healthy), 最后才是状态。
+fn summary_line(display_name: &str, state: &str, exceeded: Option<&str>, skipped: Option<SkipReason>) -> String {
+    match skipped {
+        Some(SkipReason::WrongProtocol) => return format!("- {display_name}: 不是 System One 订阅, 已跳过"),
+        Some(SkipReason::NoJevModel) => return format!("- {display_name}: 未配置 Jev 模型, 已跳过"),
+        None => {}
     }
     match exceeded {
         Some(period) => format!("- {display_name}: 已达 {period} token 限额"),
@@ -540,10 +562,46 @@ mod tests {
     }
 
     #[test]
-    fn summary_line_reports_quota_before_state() {
-        assert_eq!(summary_line("a", "Healthy", Some("每日"), false), "- a: 已达 每日 token 限额");
-        assert_eq!(summary_line("a", "Healthy", None, false), "- a: Healthy");
-        assert_eq!(summary_line("a", "Healthy", Some("每日"), true), "- a: 不是 System One 订阅, 已跳过");
+    fn summary_line_reports_skip_then_quota_then_state() {
+        assert_eq!(summary_line("a", "Healthy", Some("每日"), None), "- a: 已达 每日 token 限额");
+        assert_eq!(summary_line("a", "Healthy", None, None), "- a: Healthy");
+        assert_eq!(
+            summary_line("a", "Healthy", Some("每日"), Some(SkipReason::WrongProtocol)),
+            "- a: 不是 System One 订阅, 已跳过"
+        );
+        assert_eq!(
+            summary_line("a", "Healthy", Some("每日"), Some(SkipReason::NoJevModel)),
+            "- a: 未配置 Jev 模型, 已跳过"
+        );
+    }
+
+    #[test]
+    fn unconfigured_subscription_is_skipped_for_the_virtual_name() {
+        let mut row = systemone_row("");
+        row.model_discovery.example_models.clear();
+        assert_eq!(skip_reason(&row, "model-jev"), Some(SkipReason::NoJevModel));
+        assert_eq!(skip_reason(&row, "anthropic/model-jev"), Some(SkipReason::NoJevModel));
+    }
+
+    #[test]
+    fn real_model_name_is_not_skipped() {
+        let mut row = systemone_row("");
+        row.model_discovery.example_models.clear();
+        assert_eq!(skip_reason(&row, "jev-latest"), None, "真实模型名透传, 不是配置问题");
+        // 槽空但有示例模型 (内置订阅的常态) 不跳过
+        let mut with_examples = systemone_row("");
+        with_examples.model_discovery.example_models = vec!["jev-latest".into()];
+        assert_eq!(skip_reason(&with_examples, "model-jev"), None);
+        // 槽非空不跳过
+        assert_eq!(skip_reason(&systemone_row("jev-preview"), "model-jev"), None);
+    }
+
+    #[test]
+    fn non_systemone_subscription_is_skipped_first() {
+        let mut row = systemone_row("");
+        row.endpoint_protocol = EndpointProtocol::Messages;
+        row.model_discovery.example_models.clear();
+        assert_eq!(skip_reason(&row, "model-jev"), Some(SkipReason::WrongProtocol));
     }
 
     const RAW: &str = r#"{"model":"jev-latest","state":"hi","questions":{"a":{"type":"noul","instructions":"y?"}}}"#;
