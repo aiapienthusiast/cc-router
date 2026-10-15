@@ -93,7 +93,23 @@ if (existsSync(notesDir)) {
   }
 }
 
-// ---- 4. 发版说明 (Task 4 在此追加) ----
+// ---- 4. 发版说明 ----
+const { pickNotesLang } = await import("../src/lib/updateNotesMarkdown.ts");
+const { resolveLang } = await import("../src/components/release-notes/pickLang.ts");
+// 加繁中之前的 Release 正文, 简中段的标签是「中文」
+const oldBody = "# v6.4.0\n\n---\n\n**中文**\n\n简中正文\n\n---\n\n**English**\n\nEnglish body";
+check("旧正文: 繁中用户回退简中", pickNotesLang(oldBody, "zh-Hant") === "简中正文", pickNotesLang(oldBody, "zh-Hant"));
+check("旧正文: 简中用户", pickNotesLang(oldBody, "zh") === "简中正文");
+const newBody = "# v6.5.0\n\n---\n\n**简体中文**\n\n简中\n\n---\n\n**繁體中文**\n\n繁中\n\n---\n\n**English**\n\nEN";
+check("新正文: 繁中", pickNotesLang(newBody, "zh-Hant") === "繁中");
+check("新正文: 简中", pickNotesLang(newBody, "zh") === "简中");
+check("新正文: 日文回退英文", pickNotesLang(newBody, "ja") === "EN");
+// 原型链上的名字不能被当成语言标签
+const weird = "**constructor**\n\nx";
+check("未知标签原样返回", pickNotesLang(weird, "zh") === weird);
+const v = { notes: { zh: {}, en: {} } };
+check("内嵌说明: 繁中缺失回退简中", resolveLang("zh-Hant", v) === "zh", resolveLang("zh-Hant", v));
+check("内嵌说明: 日文缺失回退英文", resolveLang("ja", v) === "en");
 
 if (failures.length) {
   console.error(`check-i18n: ${failures.length} 项失败\n- ${failures.join("\n- ")}`);

@@ -1001,7 +1001,7 @@ export interface ClaudeCodeWriteOutcome {
 }
 
 // === 更新内容 (src-tauri/src/release_notes) ===
-export type NotesLang = "zh" | "en" | "ja";
+export type NotesLang = "zh" | "zh-Hant" | "en" | "ja";
 
 export type NotesInline =
   | { kind: "text"; text: string }
@@ -1030,8 +1030,8 @@ export interface VersionNotes {
   version: string;
   date: string | null;
   codename: string | null;
-  /** zh 必有, en / ja 可缺 */
-  notes: { zh: NotesDoc } & Partial<Record<"en" | "ja", NotesDoc>>;
+  /** zh 必有, zh-Hant / en / ja 可缺 */
+  notes: { zh: NotesDoc } & Partial<Record<"zh-Hant" | "en" | "ja", NotesDoc>>;
 }
 
 export interface ReleaseNotesDto {

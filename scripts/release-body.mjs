@@ -44,7 +44,7 @@ if (check) {
 const metaRaw = read("meta.json");
 const meta = metaRaw ? JSON.parse(metaRaw) : {};
 const blocks = [`# ${meta.codename ? `v${version} · ${meta.codename}` : `v${version}`}`];
-for (const [file, label] of [["zh.md", "中文"], ["en.md", "English"], ["ja.md", "日本語"]]) {
+for (const [file, label] of [["zh.md", "简体中文"], ["zh-Hant.md", "繁體中文"], ["en.md", "English"], ["ja.md", "日本語"]]) {
   const text = file === "zh.md" ? zh : read(file);
   if (text) blocks.push(`**${label}**\n\n${text}`);
 }
