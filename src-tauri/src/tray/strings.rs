@@ -39,12 +39,13 @@ impl TrayLocale {
         let norm = lower.split(['.', '@']).next().unwrap_or("");
         let parts: Vec<&str> = norm.split('-').filter(|p| !p.is_empty()).collect();
         match parts.first().copied() {
-            Some("zh") => {
+            // 粤语 (`yue`, macOS 的「粵語（繁體）」) 同样判定, 什么都不带时默认繁中。
+            Some(lang @ ("zh" | "yue")) => {
                 if parts.contains(&"hant") {
                     Self::ZhHant
                 } else if parts.contains(&"hans") {
                     Self::Zh
-                } else if parts.iter().any(|p| matches!(*p, "tw" | "hk" | "mo")) {
+                } else if parts.iter().any(|p| matches!(*p, "tw" | "hk" | "mo")) || lang == "yue" {
                     Self::ZhHant
                 } else {
                     Self::Zh

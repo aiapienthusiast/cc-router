@@ -77,7 +77,7 @@ pub struct Subscription {
     pub display_name: String,
     /// 创建时写进 DB 的厂商名快照 (中文); 显示一律走 [`Subscription::provider_name`]。
     pub provider_display_name: String,
-    /// 内置厂商的三语名字 (后端按 yaml 现查); 自定义订阅与 yaml 已删的厂商没有这个字段。
+    /// 内置厂商的多语名字 (后端按 yaml 现查); 自定义订阅与 yaml 已删的厂商没有这个字段。
     #[serde(default)]
     pub provider_names: Option<LocalizedName>,
     pub enabled: bool,
@@ -585,12 +585,13 @@ impl RequestQuery {
     }
 }
 
-/// 后端 `provider::model::LocalizedText`: 四语各一份, 后端保证齐全。
+/// 后端 `provider::model::LocalizedText`: 四语各一份, 后端保证齐全。`zh-Hant` 可缺:
+/// 6.4 及以前的桌面端不发它, 繁中退回简中原文。
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct LocalizedName {
     pub zh: String,
-    #[serde(rename = "zh-Hant")]
-    pub zh_hant: String,
+    #[serde(rename = "zh-Hant", default)]
+    pub zh_hant: Option<String>,
     pub en: String,
     pub ja: String,
 }
@@ -599,7 +600,7 @@ impl LocalizedName {
     pub fn get(&self, lang: Lang) -> &str {
         match lang {
             Lang::Zh => &self.zh,
-            Lang::ZhHant => &self.zh_hant,
+            Lang::ZhHant => self.zh_hant.as_deref().unwrap_or(&self.zh),
             Lang::En => &self.en,
             Lang::Ja => &self.ja,
         }
@@ -675,8 +676,9 @@ impl ProviderEndpoint {
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 pub struct ProviderTranslations {
-    #[serde(rename = "zh-Hant")]
-    pub zh_hant: ProviderText,
+    /// 6.4 及以前的桌面端不发, 此时 [`Provider::localized`] 保留简中原文。
+    #[serde(rename = "zh-Hant", default)]
+    pub zh_hant: Option<ProviderText>,
     pub en: ProviderText,
     pub ja: ProviderText,
 }
@@ -734,7 +736,10 @@ impl Provider {
     pub fn localized(mut self, lang: Lang) -> Self {
         let text = match lang {
             Lang::Zh => return self,
-            Lang::ZhHant => self.translations.zh_hant.clone(),
+            Lang::ZhHant => match self.translations.zh_hant.clone() {
+                Some(text) => text,
+                None => return self,
+            },
             Lang::En => self.translations.en.clone(),
             Lang::Ja => self.translations.ja.clone(),
         };
@@ -1059,6 +1064,27 @@ mod tests {
         assert_eq!(CustomProtocol::ALL.iter().filter(|p| p.is_systemone()).count(), 1);
     }
 
+    /// 6.4 及以前的桌面端不发 `zh-Hant` (AppImage 复制到 ~/.local/bin 的新 TUI 连旧 app、或桌面端降级):
+    /// 缺字段不能让整页解析失败, 繁中退回简中原文。
+    #[test]
+    fn zh_hant_falls_back_to_zh_when_an_older_desktop_app_omits_it() {
+        let name: LocalizedName = serde_json::from_str(r#"{"zh":"智谱","en":"Zhipu","ja":"Zhipu"}"#).unwrap();
+        assert_eq!(name.get(Lang::ZhHant), "智谱");
+        let provider: Provider = serde_json::from_value(serde_json::json!({
+            "id": "zhipu",
+            "display_name": "智谱",
+            "description": null,
+            "endpoints": [{"id": "cn", "label": "国内版", "base_url": "https://x"}],
+            "auth": {"type": "api_key"},
+            "model_discovery": {"enabled": false},
+            "translations": {"en": {"display_name": "Zhipu"}, "ja": {"display_name": "Zhipu"}},
+        }))
+        .unwrap();
+        let local = provider.localized(Lang::ZhHant);
+        assert_eq!(local.display_name, "智谱");
+        assert_eq!(local.endpoints[0].label, "国内版");
+    }
+
     #[test]
     fn capabilities_follow_endpoint_protocols() {
         let ep = |id: &str, protocol: &str| ProviderEndpoint {
@@ -1078,7 +1104,7 @@ mod tests {
             default_endpoint: None,
             auth: ProviderAuth { auth_type: "api_key".into() },
             model_discovery: ModelDiscovery { enabled: true, example_models: vec![] },
-            translations: ProviderTranslations { zh_hant: text.clone(), en: text.clone(), ja: text },
+            translations: ProviderTranslations { zh_hant: Some(text.clone()), en: text.clone(), ja: text },
             url_params: vec![],
         };
         assert_eq!(p.capabilities(), (true, true));

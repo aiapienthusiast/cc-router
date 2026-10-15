@@ -12,15 +12,16 @@ export const LOCALES: readonly Locale[] = ["zh", "zh-Hant", "en", "ja"];
 /**
  * 规范化 (小写、`_`→`-`、截掉 `.编码` / `@修饰`) 后按子标签判定。书写系统优先于地区:
  * `zh-Hans-HK` 是简中, `zh-Hant-CN` 是繁中; 只有地区时 tw / hk / mo 归繁中。
+ * 粤语 (`yue`, macOS 的「粵語（繁體）」) 同样判定, 什么都不带时默认繁中。
  */
 export function localeFromTag(tag: string): Locale {
   const norm = tag.trim().toLowerCase().replace(/_/g, "-").split(/[.@]/)[0];
   const parts = norm.split("-").filter(Boolean);
-  if (parts[0] === "zh") {
+  if (parts[0] === "zh" || parts[0] === "yue") {
     if (parts.includes("hant")) return "zh-Hant";
     if (parts.includes("hans")) return "zh";
     if (parts.some((p) => p === "tw" || p === "hk" || p === "mo")) return "zh-Hant";
-    return "zh";
+    return parts[0] === "yue" ? "zh-Hant" : "zh";
   }
   if (parts[0] === "ja") return "ja";
   return "en";

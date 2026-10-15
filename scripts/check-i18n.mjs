@@ -111,6 +111,12 @@ const v = { notes: { zh: {}, en: {} } };
 check("内嵌说明: 繁中缺失回退简中", resolveLang("zh-Hant", v) === "zh", resolveLang("zh-Hant", v));
 check("内嵌说明: 日文缺失回退英文", resolveLang("ja", v) === "en");
 
+// 旧版 app (6.4 及以前) 的解析器只认「中文 / English / 日本語」三个标签, 简中段改名会让它们的
+// 简中用户在更新页落到英文段 —— 生成器必须继续给简中段写「中文」。
+const releaseBody = readFileSync(`${ROOT}scripts/release-body.mjs`, "utf8");
+check("release-body.mjs 简中段标签必须是「中文」(旧版解析器只认它)", releaseBody.includes('["zh.md", "中文"]'));
+check("新解析器仍认「中文」", pickNotesLang("**中文**\n\n简中", "zh") === "简中");
+
 if (failures.length) {
   console.error(`check-i18n: ${failures.length} 项失败\n- ${failures.join("\n- ")}`);
   process.exit(1);
