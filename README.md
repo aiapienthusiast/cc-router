@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>中文</strong> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
+  <strong>简体中文</strong> · <a href="README.zh-Hant.md">繁體中文</a> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">
@@ -67,7 +67,7 @@
 - **出口三协议，订阅一站调度** —— 内置 24 家厂商预设（DeepSeek、Qwen、Kimi、MiMo、MiniMax、GLM、Claude、OpenAI、Gemini 等），任何 Anthropic / OpenAI / Gemini 兼容端点也能直接配进来
 - **聚合所有模型Token** —— 顺序 / 轮询 / 会话亲和、自动切换、故障转移
 - **用量小票** —— token 用量一键导出成一张「超市小票」样式的消费凭证，晒图、留档都方便
-- **三语完整翻译** —— 简体中文 / English / 日本語，可跟随系统或在设置页手动切换
+- **四语完整翻译** —— 简体中文 / 繁體中文 / English / 日本語，可跟随系统或在设置页手动切换
 - **桌面 / 网页 / 终端三种界面** —— 除了桌面 GUI，还能在浏览器里打开与桌面完全相同的[网页界面](#网页界面可选默认关闭)，或用[终端 TUI 界面](#终端界面可选默认关闭)在命令行里管理订阅、查看实时路由与请求日志
 - **虚拟模型多别名** —— fable / opus / sonnet / haiku 四个槽位各识别多种命名，以 opus 为例，`model-opus` / `claude-opus-4-7` / `anthropic/model-opus` / `anthropic/claude-opus-4-7` 都路由到同一虚拟模型，工具用什么命名都不挑
 - **本地 HTTPS** —— 一键生成自签 CA 与服务器证书，让只支持 HTTPS 的客户端也能接入 cc-router，详见[配置教程](https://ccrouter.app/docs/claude-desktop-integration/)
