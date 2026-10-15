@@ -174,7 +174,7 @@ pub async fn dispatch_oauth_attempt(
         Err(upstream::UpstreamError::Reqwest(e)) => {
             return Err(OAuthDispatchError::Upstream {
                 status: None,
-                message: format!("网络错误: {e}"),
+                message: format!("网络错误: {}", upstream::describe_error(&e)),
             })
         }
     };
@@ -373,7 +373,7 @@ fn finalize_streaming(
                     warn!(?e, "OAuth upstream stream error");
                     // serde 序列化保证 JSON 转义正确 (手拼字符串遇到引号会破帧)
                     let payload =
-                        serde_json::to_string(&serde_json::json!({"error": e.to_string()}))
+                        serde_json::to_string(&serde_json::json!({"error": upstream::describe_error(&e)}))
                             .unwrap_or_else(|_| r#"{"error":"unknown"}"#.into());
                     let _ = client_tx
                         .send(Ok(Bytes::from(format!("event: error\ndata: {}\n\n", payload))))
@@ -836,7 +836,7 @@ pub async fn dispatch_kiro_attempt(
         Err(upstream::UpstreamError::Reqwest(e)) => {
             return Err(OAuthDispatchError::Upstream {
                 status: None,
-                message: format!("Kiro 网络错误: {e}"),
+                message: format!("Kiro 网络错误: {}", upstream::describe_error(&e)),
             });
         }
     };
@@ -961,11 +961,11 @@ fn finalize_kiro_streaming(
                 Ok(c) => c,
                 Err(e) => {
                     warn!(?e, "Kiro upstream stream error");
+                    let payload =
+                        serde_json::to_string(&serde_json::json!({"error": upstream::describe_error(&e)}))
+                            .unwrap_or_else(|_| r#"{"error":"unknown"}"#.into());
                     let _ = client_tx
-                        .send(Ok(Bytes::from(format!(
-                            "event: error\ndata: {{\"error\":\"{}\"}}\n\n",
-                            e
-                        ))))
+                        .send(Ok(Bytes::from(format!("event: error\ndata: {}\n\n", payload))))
                         .await;
                     break;
                 }

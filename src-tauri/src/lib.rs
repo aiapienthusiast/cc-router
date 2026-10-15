@@ -285,14 +285,8 @@ async fn bootstrap(
         observability::body_dump::run_consumer(body_dump_rx, dump_dir).await;
     });
 
-    // 7. HTTP client 单例
-    // timeout(600s) 是整个 request 生命周期上限(含流式 body),与 Anthropic server-side 上限对齐;
-    // 主要在真 hang 时兜底,正常 SSE 客户端断开会通过 client_tx 失败立即释放(见 sse.rs)。
-    let http_client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .timeout(std::time::Duration::from_secs(600))
-        .user_agent(concat!("cc-router/", env!("CARGO_PKG_VERSION")))
-        .build()?;
+    // 7. HTTP client 单例: 600s 空闲超时 (不是总超时, 见 upstream::build_client)
+    let http_client = proxy::upstream::build_client(proxy::upstream::UPSTREAM_IDLE_TIMEOUT)?;
 
     // probe_client: 仅 ping/测试连接用, 短超时, 与生产路径分离
     let probe_client = reqwest::Client::builder()

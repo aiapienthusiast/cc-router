@@ -154,7 +154,7 @@ pub async fn dispatch_gemini_interactions_attempt(
         Err(upstream::UpstreamError::Reqwest(e)) => {
             return Err(OAuthDispatchError::Upstream {
                 status: None,
-                message: format!("网络错误: {e}"),
+                message: format!("网络错误: {}", upstream::describe_error(&e)),
             });
         }
     };
@@ -331,7 +331,7 @@ fn finalize_streaming(
                 Ok(c) => c,
                 Err(e) => {
                     warn!(?e, "Gemini Interactions upstream stream error");
-                    let payload = serde_json::to_string(&serde_json::json!({"error": e.to_string()}))
+                    let payload = serde_json::to_string(&serde_json::json!({"error": upstream::describe_error(&e)}))
                         .unwrap_or_else(|_| r#"{"error":"unknown"}"#.into());
                     let _ = client_tx
                         .send(Ok(Bytes::from(format!("event: error\ndata: {}\n\n", payload))))

@@ -41,7 +41,7 @@ pub struct AppState {
     pub body_dump_tx: mpsc::Sender<BodyDumpEntry>,
     pub http_client: reqwest::Client,
     /// 短超时(30s) 单例, 仅用于订阅可达性探测(测试连接 + 后台巡检)。
-    /// 与 `http_client` 的 600s 上限分离: 探测期望快速判定, 慢响应等同失败。
+    /// 与 `http_client` (600s 空闲超时, 无总上限) 分离: 探测期望快速判定, 慢响应等同失败。
     pub probe_client: reqwest::Client,
     /// ChatGPT OAuth manager (Phase 1 接入). 全订阅共享一份, 内含每订阅 access_token 缓存与 refresh 锁.
     pub chatgpt_oauth: Arc<ChatGptOAuthManager>,

@@ -239,7 +239,7 @@ pub async fn dispatch_openai_chat_completions_attempt(
         Err(upstream::UpstreamError::Reqwest(e)) => {
             return Err(OAuthDispatchError::Upstream {
                 status: None,
-                message: format!("网络错误: {e}"),
+                message: format!("网络错误: {}", upstream::describe_error(&e)),
             });
         }
     };
@@ -405,7 +405,7 @@ fn finalize_streaming(
                     // 修 #3: mid-stream 网络错误改走 UpstreamError outcome, 不再误标 RequestSucceeded
                     warn!(?e, "OpenAI Chat upstream stream error");
                     outcome = StreamOutcome::UpstreamError {
-                        message: format!("上游 stream 中断: {e}"),
+                        message: format!("上游 stream 中断: {}", upstream::describe_error(&e)),
                         http_status: 502,
                     };
                     break 'outer;

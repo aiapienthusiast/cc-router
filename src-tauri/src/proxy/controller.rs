@@ -21,9 +21,10 @@ use tracing::{info, warn};
 use crate::error::{AppError, AppResult};
 use crate::proxy::listeners::{bind_all, BindOpts, Bound, BoundPorts, ListenSpec, ProxyConfig};
 
-/// HTTPS 路的排空上限, 与 http_client 的 600s 总超时对齐. HTTP 路 axum 不支持上限:
-/// 普通请求同样受那个超时约束, 最终一定结束; 无尽的事件流 (/ui/api/events) 则靠
-/// 转发 `proxy_restarted` 之后主动结束来让旧实例排空.
+/// HTTPS 路的排空上限 (与 http_client 的 600s 空闲超时同值, 但那是空闲上限不是总上限,
+/// 持续出数据的长流可以比它活得久, 届时被这里截断). HTTP 路 axum 不支持上限: 普通请求
+/// 跑完或客户端断开即结束; 无尽的事件流 (/ui/api/events) 则靠转发 `proxy_restarted`
+/// 之后主动结束来让旧实例排空.
 const HTTPS_DRAIN: Duration = Duration::from_secs(600);
 
 pub trait ProxyHooks: Clone + Send + Sync + 'static {

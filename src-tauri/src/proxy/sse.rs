@@ -97,15 +97,12 @@ pub fn stream_response(
                 Err(e) => {
                     warn!(?e, "upstream stream error");
                     had_error = true;
-                    error_text = Some(e.to_string());
+                    let text = crate::proxy::upstream::describe_error(&e);
+                    error_text = Some(text.clone());
                     if !wrote_any_event {
-                        let _ = client_tx
-                            .send(Ok(Bytes::from(format_error_event(&e.to_string()))))
-                            .await;
+                        let _ = client_tx.send(Ok(Bytes::from(format_error_event(&text)))).await;
                     } else {
-                        let _ = client_tx
-                            .send(Ok(Bytes::from(format_error_event(&e.to_string()))))
-                            .await;
+                        let _ = client_tx.send(Ok(Bytes::from(format_error_event(&text)))).await;
                         let _ = client_tx.send(Ok(Bytes::from_static(b"data: [DONE]\n\n"))).await;
                     }
                     break;

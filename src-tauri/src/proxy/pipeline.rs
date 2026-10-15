@@ -1492,7 +1492,7 @@ pub async fn dispatch(
                             state_machine::Event::NetworkError,
                         )
                         .await;
-                        let err_msg = format!("流首 lookahead 网络错误: {}", e);
+                        let err_msg = format!("流首 lookahead 网络错误: {}", upstream::describe_error(&e));
                         let entry = RequestLogEntry {
                             id: attempt_id,
                             timestamp_ms: chrono::Utc::now().timestamp_millis(),
@@ -1625,7 +1625,7 @@ pub async fn dispatch(
                 )
                 .await;
 
-                let err_msg = format!("网络错误: {}", e);
+                let err_msg = format!("网络错误: {}", upstream::describe_error(&e));
                 let entry = RequestLogEntry {
                     id: attempt_id,
                     timestamp_ms: chrono::Utc::now().timestamp_millis(),
