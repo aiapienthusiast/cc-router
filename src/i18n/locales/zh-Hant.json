@@ -34,6 +34,8 @@
   "settings.update.source.label": "更新源",
   "settings.update.source.international": "全球",
   "settings.update.source.china": "中國大陸",
+  "settings.update.autoCheck.label": "自動檢查更新",
+  "settings.update.autoCheck.desc": "啟動時查詢一次新版本。關閉後只在你手動檢查時連網查詢",
   "settings.section.proxy": "代理服務",
   "settings.proxy.statusRunning": "執行中",
   "settings.proxy.statusStopped": "未執行",

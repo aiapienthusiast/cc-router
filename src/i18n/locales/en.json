@@ -34,6 +34,8 @@
   "settings.update.source.label": "Update source",
   "settings.update.source.international": "Global",
   "settings.update.source.china": "Mainland China",
+  "settings.update.autoCheck.label": "Check for updates automatically",
+  "settings.update.autoCheck.desc": "Looks for a new version once at launch. When off, it only goes online when you check manually",
   "settings.section.proxy": "Proxy service",
   "settings.proxy.statusRunning": "Running",
   "settings.proxy.statusStopped": "Stopped",

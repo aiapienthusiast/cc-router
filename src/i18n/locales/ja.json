@@ -34,6 +34,8 @@
   "settings.update.source.label": "更新ソース",
   "settings.update.source.international": "グローバル",
   "settings.update.source.china": "中国本土",
+  "settings.update.autoCheck.label": "更新を自動で確認",
+  "settings.update.autoCheck.desc": "起動時に新しいバージョンを一度確認します。オフにすると、手動で確認したときだけ通信します",
   "settings.section.proxy": "プロキシサービス",
   "settings.proxy.statusRunning": "実行中",
   "settings.proxy.statusStopped": "停止中",

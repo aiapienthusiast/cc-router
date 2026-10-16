@@ -572,6 +572,8 @@ export interface Settings {
   tui_enabled: boolean;
   /** 导出用量小票时是否播放「小票机吐纸」动画, 默认 true */
   receipt_print_animation: boolean;
+  /** 启动时是否自动检查新版本, 默认 true; 关闭后只能手动检查 */
+  auto_check_updates: boolean;
   /** 上次关闭「更新内容」弹窗时的 app 版本; null = 从没有此功能的老版本升上来。只读, 由 mark_release_notes_seen 写 */
   last_seen_release_notes: string | null;
 }
@@ -599,6 +601,7 @@ export interface SettingsPatch {
   web_ui_auth_enabled?: boolean;
   tui_enabled?: boolean;
   receipt_print_animation?: boolean;
+  auto_check_updates?: boolean;
   // 注意: auth_token 不在 patch 里,必须通过 generateNewToken() 改
 }
 
