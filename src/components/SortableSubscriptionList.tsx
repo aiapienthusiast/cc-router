@@ -205,7 +205,7 @@ function SortableRow({
         <>
           {/* 默认为空且无规则时摘要为 null: 行内已有「不会被调用」 */}
           <span className="endpoint-summary">{slotSummaryText(sub, slot, t)}</span>
-          <Link className="endpoint-edit-link" to={`/subscriptions/${sub.id}`}>
+          <Link className="endpoint-edit-link" to={`/subscriptions/${sub.id}?slot=${slot}`}>
             {t("schedule.summary.edit")}
           </Link>
         </>

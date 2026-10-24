@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ArrowLeft, TriangleAlert, LoaderCircle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { runtime } from "@/runtime";
@@ -54,7 +54,7 @@ import type {
   TestConnectionResult,
   TokenQuotas,
 } from "@/types";
-import { MODEL_SLOT_KEYS, uniformSlots } from "@/lib/modelSlots";
+import { MODEL_SLOT_KEYS, parseSlotParam, uniformSlots } from "@/lib/modelSlots";
 import { normalizeSchedules, schedulesEqual, validateRules } from "@/lib/slotSchedule";
 import { lastErrorText, testResultText } from "@/lib/backendText";
 import { providerName } from "@/lib/providerText";
@@ -67,6 +67,9 @@ export function SubscriptionEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // 虚拟模型页「编辑槽位」带 ?slot=<槽位>, 打开时停在那个槽位的标签上
+  const [searchParams] = useSearchParams();
+  const initialSlot = parseSlotParam(searchParams.get("slot")) ?? undefined;
 
   const subQuery = useQuery({
     queryKey: ["subscription", id],
@@ -114,6 +117,8 @@ export function SubscriptionEditPage() {
   const [forwardClientHeaders, setForwardClientHeaders] = useState(false);
 
   const [models, setModels] = useState<ModelInfo[] | null>(null);
+  /** ModelSlotPicker 的自动 / 手动 (手动时分时段编辑也用文本输入) */
+  const [manualModels, setManualModels] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
@@ -121,7 +126,7 @@ export function SubscriptionEditPage() {
   const [newKey, setNewKey] = useState("");
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  /** 槽位保存后还要单独提交时段规则, updateMut.isPending 盖不住这一段 */
+  /** 时段规则与槽位分两次提交, updateMut.isPending 盖不住规则那一段 */
   const [saving, setSaving] = useState(false);
   const modelIds = useMemo(() => (models ?? []).map((m) => m.id), [models]);
 
@@ -240,13 +245,14 @@ export function SubscriptionEditPage() {
     }
     setSaving(true);
     try {
-      await updateMut.mutateAsync({ id, patch });
-      // 默认模型走上面的槽位保存; 规则独立成列, 有改动才提交 (systemone 订阅后端拒绝规则)
+      // 规则独立成列, 有改动才提交 (systemone 订阅后端拒绝规则); 先于默认模型提交:
+      // 反过来时第二步失败会留下「默认已清空、规则没存上」的空槽 (此后不会被调用)
       if (!isSystemOne && !schedulesEqual(schedules, sub.slot_schedules ?? {})) {
         await api.updateSlotSchedules(id, normalizeSchedules(schedules));
         queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
         queryClient.invalidateQueries({ queryKey: ["subscription", id] });
       }
+      await updateMut.mutateAsync({ id, patch });
     } catch (e) {
       setSaveError(`${t("subscriptionEdit.errSave")}: ${errorText(e)}`);
     } finally {
@@ -526,6 +532,8 @@ export function SubscriptionEditPage() {
                       schedules={schedules}
                       onSchedulesChange={setSchedules}
                       models={modelIds}
+                      manual={manualModels}
+                      initialSlot={initialSlot}
                     />
                   </div>
                 )}
@@ -548,6 +556,7 @@ export function SubscriptionEditPage() {
                   systemone={isSystemOne}
                   jevRequired={isSystemOne && sub.is_user_defined}
                   hideMainSlots={!isSystemOne}
+                  onModeChange={setManualModels}
                 />
                 {sub.model_cache && !isSystemOne && (
                   <div className="mt-3 text-xs text-muted-foreground">

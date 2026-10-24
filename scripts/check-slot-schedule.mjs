@@ -221,6 +221,16 @@ check("现在时刻带瞬时状态", same(nodes.map((n) => n.status ?? null), [n
 check("别的时刻不带瞬时状态", routeNodes(VM(["cool"]), map, mon10, false, colors).every((n) => !n.status));
 check("路由节点颜色来自视图配色", same(nodes[1].color, colors.get("deepseek-4.1")));
 
+// ---- 2c. 订阅编辑页: ?slot= 初始标签与「列表外」提示 ----
+const { parseSlotParam } = await import("../src/lib/modelSlots.ts");
+const { outsideModelList } = await import("../src/lib/slotSchedule.ts");
+check("?slot= 四槽原样", ["fable", "opus", "sonnet", "haiku"].every((k) => parseSlotParam(k) === k));
+check("?slot= 非法值忽略", [null, "", "fallback", "jev", "OPUS", " opus", "model-opus"].every((v) => parseSlotParam(v) === null));
+check("列表外: 有列表且不在其中", outsideModelList("x", ["a", "b"]));
+check("列表外: 在列表里不算", !outsideModelList("a", ["a", "b"]));
+check("列表外: 空值不算", !outsideModelList("", ["a"]));
+check("列表外: 没有模型列表时不提示", !outsideModelList("x", []));
+
 // ---- 3. 源码扫描: 不得用 new Date( 推算星期 / 时刻 ----
 const scan = [`${SRC}lib/slotSchedule.ts`, `${SRC}lib/slotNow.ts`];
 const walk = (dir) => {

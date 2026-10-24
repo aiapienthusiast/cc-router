@@ -45,6 +45,8 @@ interface Props {
    * 模型列表的自动 / 手动与刷新、四槽思考强度、兜底槽。新建向导不传 (四槽必填)。
    */
   hideMainSlots?: boolean;
+  /** 自动 / 手动切换后回报 (编辑页据此让 SlotScheduleEditor 换成文本输入) */
+  onModeChange?: (manual: boolean) => void;
 }
 
 type SlotRow = { key: keyof ModelSlots; labelKey: string; hintKey: string };
@@ -97,6 +99,7 @@ export function ModelSlotPicker({
   systemone,
   jevRequired,
   hideMainSlots,
+  onModeChange,
 }: Props) {
   const { t } = useT();
   // null 表示还没初始化;一旦用户主动点击切换,userChose 置 true,不再被外部 data 反向覆盖。
@@ -115,6 +118,11 @@ export function ModelSlotPicker({
 
   // systemone 没有模型列表可选, 恒为手动输入 (这样示例提示也会显示)
   const effectiveMode: Mode = systemone ? "manual" : (mode ?? "auto");
+
+  const manual = effectiveMode === "manual";
+  useEffect(() => {
+    onModeChange?.(manual);
+  }, [manual, onModeChange]);
 
   function chooseMode(next: Mode) {
     userChoseRef.current = true;

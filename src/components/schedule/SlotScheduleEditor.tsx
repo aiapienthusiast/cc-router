@@ -18,6 +18,7 @@ import {
   crossesMidnight,
   dayPreset,
   effectiveModel,
+  outsideModelList,
   ruleIssues,
   validateRules,
   weekCells,
@@ -38,6 +39,7 @@ const WEEK_HOURS = 168;
  * 有序时段规则, 右侧按日型合并的一周预览, 下方只提示不拦截的检查。
  * 受控组件: 默认模型就是父组件那份 `slots` (与 ModelSlotPicker 共用), 规则是 `schedules`。
  * 自己只留当前标签、哪些行展开了自定义星期、刚复制过的提示这几样界面状态。
+ * 没有模型列表或模型列表切到「手动」时, 默认与规则的模型都是纯文本输入。
  */
 export function SlotScheduleEditor({
   slots,
@@ -45,6 +47,8 @@ export function SlotScheduleEditor({
   schedules,
   onSchedulesChange,
   models,
+  manual,
+  initialSlot,
   disabled,
 }: {
   slots: ModelSlots;
@@ -52,10 +56,15 @@ export function SlotScheduleEditor({
   schedules: SlotSchedules;
   onSchedulesChange: (s: SlotSchedules) => void;
   models: string[];
+  /** ModelSlotPicker 的模型列表处于「手动」模式 */
+  manual?: boolean;
+  /** 初始标签 (「编辑槽位」链接带的 `?slot=`), 缺省 fable */
+  initialSlot?: FourSlot;
   disabled?: boolean;
 }) {
   const { t } = useT();
-  const [cur, setCur] = useState<FourSlot>("fable");
+  const [cur, setCur] = useState<FourSlot>(initialSlot ?? "fable");
+  const freeText = !!manual || models.length === 0;
   /** 选了「自定义」的行: 星期恰好等于某个快捷项时仍保持七个勾选可见 */
   const [customRows, setCustomRows] = useState<Set<number>>(new Set());
   const [copiedFrom, setCopiedFrom] = useState<FourSlot | null>(null);
@@ -185,14 +194,15 @@ export function SlotScheduleEditor({
               {t("schedule.edit.default")}
             </label>
             <div className="sched-ed-grow">
-              <ModelSelect
+              <ModelField
                 id={`sched-def-${cur}`}
                 noneLabel={t("schedule.edit.defaultNone")}
                 current={def}
-                models={modelInfos}
-                showHistorical={def !== "" && !models.includes(def)}
+                models={models}
+                modelInfos={modelInfos}
+                freeText={freeText}
                 disabled={disabled}
-                onSelect={(v) => {
+                onChange={(v) => {
                   setCopiedFrom(null);
                   onSlotsChange({ ...slots, [cur]: v });
                 }}
@@ -209,6 +219,7 @@ export function SlotScheduleEditor({
               custom={customRows.has(i)}
               models={models}
               modelInfos={modelInfos}
+              freeText={freeText}
               disabled={disabled}
               onPreset={(p) => setPreset(i, p)}
               onToggleDay={(d) => toggleDay(i, d)}
@@ -276,7 +287,10 @@ export function SlotScheduleEditor({
         </div>
 
         <div className="sched-ed-preview">
-          <div className="sched-ed-preview-title">{t("schedule.edit.previewTitle")}</div>
+          <div className="sched-ed-preview-title">
+            {t("schedule.edit.previewTitle")}
+            <span className="sched-ed-preview-note">{t("schedule.edit.previewHostTime")}</span>
+          </div>
           <DayTypeCalendar cells={cells} emptyLabel="unavailable" />
         </div>
       </div>
@@ -326,6 +340,7 @@ function RuleRow({
   custom,
   models,
   modelInfos,
+  freeText,
   disabled,
   onPreset,
   onToggleDay,
@@ -338,6 +353,7 @@ function RuleRow({
   custom: boolean;
   models: string[];
   modelInfos: ModelInfo[];
+  freeText: boolean;
   disabled?: boolean;
   onPreset: (p: DayPreset) => void;
   onToggleDay: (d: number) => void;
@@ -387,12 +403,13 @@ function RuleRow({
           →
         </span>
         <div className="sched-ed-grow">
-          <ModelSelect
+          <ModelField
             current={rule.model}
-            models={modelInfos}
-            showHistorical={rule.model !== "" && !models.includes(rule.model)}
+            models={models}
+            modelInfos={modelInfos}
+            freeText={freeText}
             disabled={disabled}
-            onSelect={(v) => onEdit({ model: v })}
+            onChange={(v) => onEdit({ model: v })}
             ariaLabel={t("schedule.edit.modelAria", { n })}
             t={t}
           />
@@ -428,6 +445,60 @@ function RuleRow({
         </div>
       )}
     </div>
+  );
+}
+
+/** 有模型列表 → 可搜索下拉; 没有列表或手动模式 → 纯文本输入 (同 ModelSlotPicker 的两种模式) */
+function ModelField({
+  id,
+  noneLabel,
+  current,
+  models,
+  modelInfos,
+  freeText,
+  disabled,
+  onChange,
+  ariaLabel,
+  t,
+}: {
+  id?: string;
+  /** 空值是合法选择 (默认模型「不设置」) 时给出; 文本输入下作占位提示 */
+  noneLabel?: string;
+  current: string;
+  models: string[];
+  modelInfos: ModelInfo[];
+  freeText: boolean;
+  disabled?: boolean;
+  onChange: (v: string) => void;
+  ariaLabel?: string;
+  t: TFunction;
+}) {
+  if (freeText) {
+    return (
+      <input
+        id={id}
+        className="input mono"
+        style={{ flex: 1, minWidth: 0 }}
+        value={current}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={noneLabel ?? t("modelSlot.modelIdPh")}
+        aria-label={ariaLabel}
+        disabled={disabled}
+      />
+    );
+  }
+  return (
+    <ModelSelect
+      id={id}
+      noneLabel={noneLabel}
+      current={current}
+      models={modelInfos}
+      showHistorical={outsideModelList(current, models)}
+      disabled={disabled}
+      onSelect={onChange}
+      ariaLabel={ariaLabel}
+      t={t}
+    />
   );
 }
 

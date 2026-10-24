@@ -1209,6 +1209,7 @@
   "schedule.edit.unused": "這個槽位不會被呼叫：預設模型為空，也沒有時段規則。引用它的虛擬模型會跳過本訂閱",
   "schedule.edit.neverAvailable": "這個槽位一週都無法使用：引用它的虛擬模型會跳過本訂閱",
   "schedule.edit.previewTitle": "本槽位一週預覽 · 斜線 = 無法使用",
+  "schedule.edit.previewHostTime": "依執行 cc-router 的電腦的時間",
   "schedule.edit.modelListLabel": "模型清單",
   "schedule.edit.saveInvalid": "{slot} 的時段規則有誤：{msg}",
   "schedule.now.scheduled": "分時段",

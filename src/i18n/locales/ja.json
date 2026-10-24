@@ -1209,6 +1209,7 @@
   "schedule.edit.unused": "このスロットは呼び出されません。デフォルトのモデルが空で、時間帯ルールもありません。これを参照する仮想モデルはこのサブスクリプションをスキップします",
   "schedule.edit.neverAvailable": "このスロットは 1 週間ずっと利用できません。これを参照する仮想モデルはこのサブスクリプションをスキップします",
   "schedule.edit.previewTitle": "このスロットの 1 週間 · 斜線 = 利用不可",
+  "schedule.edit.previewHostTime": "cc-router を実行しているコンピューターの時刻基準",
   "schedule.edit.modelListLabel": "モデル一覧",
   "schedule.edit.saveInvalid": "{slot} の時間帯ルールに誤りがあります：{msg}",
   "schedule.now.scheduled": "時間帯別",

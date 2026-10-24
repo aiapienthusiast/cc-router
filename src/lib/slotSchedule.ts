@@ -219,3 +219,11 @@ export function normalizeSchedules(s: SlotSchedules): SlotSchedules {
 export function schedulesEqual(a: SlotSchedules, b: SlotSchedules): boolean {
   return JSON.stringify(normalizeSchedules(a)) === JSON.stringify(normalizeSchedules(b));
 }
+
+/**
+ * 模型下拉里是否要把当前值标成「(列表外)」: 只在真有模型列表时才有意义 —— 没有列表
+ * (手动模式 / 厂商没有 /models / 拉取失败) 时每个名字都会被误标, 同 ModelSlotPicker。
+ */
+export function outsideModelList(current: string, models: string[]): boolean {
+  return current !== "" && models.length > 0 && !models.includes(current);
+}
