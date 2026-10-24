@@ -38,6 +38,7 @@ const readJson = (rel) => JSON.parse(readFileSync(ROOT + rel, "utf8"));
 
 const {
   effectiveModel, clockAt, weekCells, groupDayTypes, runs, weeklyHours, ruleIssues, validateRules, HALF_HOURS,
+  dayPreset, DAY_PRESETS, crossesMidnight, normalizeSchedules, schedulesEqual,
 } = await import("../src/lib/slotSchedule.ts");
 const { modelColor, assignModelColors } = await import("../src/lib/modelColor.ts");
 
@@ -71,6 +72,9 @@ check("每组 48 格", groups.every((g) => g.cells.length === 48));
 const shadow = ruleIssues([R(ALL, "00:00", "24:00", "a"), R(ALL, "10:00", "11:00", "b")]);
 check("被盖住的规则报 shadowed", same(shadow, [{ index: 1, kind: "shadowed" }]), JSON.stringify(shadow));
 check("正常规则无提示", ruleIssues(qoder).length === 0);
+// 「被上面的时段盖住」只看排在前面的规则: 被后面的同模型规则覆盖不算, 重复规则只报后一条
+check("被后面的规则覆盖不算被盖住", ruleIssues([R(ALL, "10:00", "11:00", "a"), R(ALL, "00:00", "24:00", "a")]).length === 0);
+check("重复规则只报后一条", same(ruleIssues([R(ALL, "00:00", "08:00", "a"), R(ALL, "00:00", "08:00", "a")]), [{ index: 1, kind: "shadowed" }]));
 check("起止相同报 same_start_end", same(ruleIssues([R([1], "08:00", "08:00", "a")]), [{ index: 0, kind: "same_start_end" }]));
 
 check("validateRules 通过 qoder", validateRules(qoder) === null);
@@ -98,6 +102,19 @@ check("weeklyHours qoder", weeklyHours("", qoder) === 120, String(weeklyHours(""
 const monday = qCells.slice(0, 48);
 const rs = runs(monday, (v) => v ?? "");
 check("runs 周一", same(rs.map((r) => [r.start, r.end, r.value]), [[0, 16, null], [16, 36, "deepseek-4.1"], [36, 48, "qwen-max"]]), JSON.stringify(rs));
+
+// 编辑页用的小工具: 星期快捷项识别 / 跨零点 / 草稿与已存配置比较
+check("dayPreset 每天", dayPreset([7, 1, 2, 3, 4, 5, 6]) === "every");
+check("dayPreset 工作日", dayPreset([1, 2, 3, 4, 5]) === "workdays");
+check("dayPreset 周末", dayPreset([7, 6]) === "weekend");
+check("dayPreset 自定义", dayPreset([1, 3]) === "custom" && dayPreset([]) === "custom" && dayPreset([1, 1, 2, 3, 4, 5]) === "custom");
+check("DAY_PRESETS 升序", same(DAY_PRESETS.every, ALL) && same(DAY_PRESETS.workdays, [1, 2, 3, 4, 5]) && same(DAY_PRESETS.weekend, [6, 7]));
+check("crossesMidnight", crossesMidnight("18:00", "08:00") && !crossesMidnight("18:00", "24:00")
+  && !crossesMidnight("08:00", "18:00") && !crossesMidnight("08:00", "08:00") && !crossesMidnight("bad", "08:00"));
+check("normalizeSchedules 去空列表并固定槽位顺序",
+  same(normalizeSchedules({ haiku: [qoder[0]], fable: [], opus: qoder }), { opus: qoder, haiku: [qoder[0]] }));
+check("schedulesEqual 忽略空列表与键顺序", schedulesEqual({ sonnet: [], opus: qoder }, { opus: qoder }));
+check("schedulesEqual 规则不同", !schedulesEqual({ opus: qoder }, { opus: [qoder[1], qoder[0]] }));
 
 const c1 = modelColor("deepseek-4.1");
 check("modelColor 同名同色", same(c1, modelColor("deepseek-4.1")));

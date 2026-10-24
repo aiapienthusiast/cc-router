@@ -27,6 +27,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import { ModelSlotPicker } from "@/components/ModelSlotPicker";
+import { SlotScheduleEditor } from "@/components/schedule/SlotScheduleEditor";
 import { SubscriptionBalanceCard } from "@/components/SubscriptionBalanceCard";
 import { SubscriptionQuotaCard } from "@/components/SubscriptionQuotaCard";
 import { api } from "@/api/tauri";
@@ -48,11 +49,13 @@ import type {
   QuotaPeriod,
   RefreshModelListResult,
   SlotEfforts,
+  SlotSchedules,
   SubscriptionPatch,
   TestConnectionResult,
   TokenQuotas,
 } from "@/types";
-import { uniformSlots } from "@/lib/modelSlots";
+import { MODEL_SLOT_KEYS, uniformSlots } from "@/lib/modelSlots";
+import { normalizeSchedules, schedulesEqual, validateRules } from "@/lib/slotSchedule";
 import { lastErrorText, testResultText } from "@/lib/backendText";
 import { providerName } from "@/lib/providerText";
 import { UrlParamFields, urlParamErrors } from "@/components/UrlParamFields";
@@ -92,6 +95,7 @@ export function SubscriptionEditPage() {
   const [displayName, setDisplayName] = useState<string>("");
   const [slots, setSlots] = useState<ModelSlots>(uniformSlots(""));
   const [slotEfforts, setSlotEfforts] = useState<SlotEfforts>({});
+  const [schedules, setSchedules] = useState<SlotSchedules>({});
   const [quotaInputs, setQuotaInputs] = useState<Record<QuotaPeriod, string>>({
     daily: "",
     weekly: "",
@@ -117,6 +121,9 @@ export function SubscriptionEditPage() {
   const [newKey, setNewKey] = useState("");
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** 槽位保存后还要单独提交时段规则, updateMut.isPending 盖不住这一段 */
+  const [saving, setSaving] = useState(false);
+  const modelIds = useMemo(() => (models ?? []).map((m) => m.id), [models]);
 
   useEffect(() => {
     if (subQuery.data) {
@@ -126,6 +133,7 @@ export function SubscriptionEditPage() {
       setDisplayName(subQuery.data.display_name);
       setSlots(subQuery.data.model_slots);
       setSlotEfforts(subQuery.data.slot_efforts ?? {});
+      setSchedules(subQuery.data.slot_schedules ?? {});
       const q = subQuery.data.token_quotas ?? {};
       setQuotaInputs({
         daily: formatTokenShorthand(q.daily),
@@ -180,6 +188,13 @@ export function SubscriptionEditPage() {
     if (sub.is_user_defined && sub.endpoint_protocol === "systemone" && !slots.jev?.trim()) {
       return setSaveError(t("subscriptionNew.errFillJevModel"));
     }
+    // 时段规则先整体校验: 任一不过就什么都不发 (与后端 validate_slot_schedules 同规则)
+    if (!isSystemOne) {
+      for (const k of MODEL_SLOT_KEYS) {
+        const errKey = validateRules(schedules[k] ?? []);
+        if (errKey) return setSaveError(t("schedule.edit.saveInvalid", { slot: `model-${k}`, msg: t(errKey) }));
+      }
+    }
     const patch: SubscriptionPatch = {
       display_name: displayName,
       model_slots: slots,
@@ -223,10 +238,19 @@ export function SubscriptionEditPage() {
         patch.endpoint_id = endpointId;
       }
     }
+    setSaving(true);
     try {
       await updateMut.mutateAsync({ id, patch });
+      // 默认模型走上面的槽位保存; 规则独立成列, 有改动才提交 (systemone 订阅后端拒绝规则)
+      if (!isSystemOne && !schedulesEqual(schedules, sub.slot_schedules ?? {})) {
+        await api.updateSlotSchedules(id, normalizeSchedules(schedules));
+        queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["subscription", id] });
+      }
     } catch (e) {
       setSaveError(`${t("subscriptionEdit.errSave")}: ${errorText(e)}`);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -489,8 +513,22 @@ export function SubscriptionEditPage() {
             <Card>
               <CardHeader>
                 <CardTitle>{t("subscriptionEdit.modelSlotsTitle")}</CardTitle>
+                {!isSystemOne && (
+                  <p className="text-sm text-muted-foreground">{t("schedule.edit.cardDesc")}</p>
+                )}
               </CardHeader>
               <CardContent>
+                {!isSystemOne && (
+                  <div className="mb-6 border-b border-dashed border-(--line) pb-6">
+                    <SlotScheduleEditor
+                      slots={slots}
+                      onSlotsChange={setSlots}
+                      schedules={schedules}
+                      onSchedulesChange={setSchedules}
+                      models={modelIds}
+                    />
+                  </div>
+                )}
                 <ModelSlotPicker
                   value={slots}
                   onChange={setSlots}
@@ -509,6 +547,7 @@ export function SubscriptionEditPage() {
                   }
                   systemone={isSystemOne}
                   jevRequired={isSystemOne && sub.is_user_defined}
+                  hideMainSlots={!isSystemOne}
                 />
                 {sub.model_cache && !isSystemOne && (
                   <div className="mt-3 text-xs text-muted-foreground">
@@ -609,8 +648,8 @@ export function SubscriptionEditPage() {
               <Button variant="destructive" size="sm" onClick={() => setDeleteDialog(true)}>
                 {t("common.delete")}
               </Button>
-              <Button size="sm" onClick={save} disabled={updateMut.isPending}>
-                {updateMut.isPending && <LoaderCircle className="h-4 w-4 animate-spin" />}
+              <Button size="sm" onClick={save} disabled={saving}>
+                {saving && <LoaderCircle className="h-4 w-4 animate-spin" />}
                 {t("common.save")}
               </Button>
             </div>

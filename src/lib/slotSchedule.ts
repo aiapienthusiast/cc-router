@@ -2,7 +2,7 @@
 // 两边读同一张用例表 `slot-schedule-cases.json`。
 // 纯 TS: 只许 type-only import (scripts/check-slot-schedule.mjs 让 Node 直接 import 本文件),
 // 且不得用 Date 构造器推算星期 / 时刻 —— 「此刻」一律来自宿主机时钟 (useHostClock)。
-import type { ScheduleRule } from "@/types";
+import type { FourSlot, ScheduleRule, SlotSchedules } from "@/types";
 
 /** 本地墙钟读数。weekday 1(周一)..7(周日), minute 为当天 0 点起的分钟数 0..1439。 */
 export interface WallClock {
@@ -130,24 +130,23 @@ export function weeklyHours(def: string, rules: ScheduleRule[]): number {
 
 /**
  * 只提示不拦截的问题: 起止相同 (保存会被拒, 提前提示); 被前面的规则完全盖住
- * (去掉它一周 336 格的求值结果不变)。
+ * (只看它和排在它前面的规则: 加上它一周 336 格的求值结果不变)。
+ * 被后面的同模型规则覆盖不算 —— 那时它是先命中的一条, 照样生效。
  */
 export function ruleIssues(
   rules: ScheduleRule[],
 ): { index: number; kind: "same_start_end" | "shadowed" }[] {
   const out: { index: number; kind: "same_start_end" | "shadowed" }[] = [];
   // 默认值取空: 被盖住与否只看规则之间, 与默认值无关
-  const full = weekCells((at) => effectiveModel("", rules, at));
+  let before = weekCells((at) => effectiveModel("", [], at));
   rules.forEach((r, index) => {
+    const upto = weekCells((at) => effectiveModel("", rules.slice(0, index + 1), at));
     if (r.start === r.end) {
       out.push({ index, kind: "same_start_end" });
-      return;
+    } else if (upto.every((m, i) => m === before[i])) {
+      out.push({ index, kind: "shadowed" });
     }
-    const without = rules.filter((_, i) => i !== index);
-    const same = weekCells((at) => effectiveModel("", without, at)).every(
-      (m, i) => m === full[i],
-    );
-    if (same) out.push({ index, kind: "shadowed" });
+    before = upto;
   });
   return out;
 }
@@ -177,4 +176,46 @@ export function validateRules(rules: ScheduleRule[]): string | null {
     if (r.model.trim() === "") return "schedule.err.model_empty";
   }
   return null;
+}
+
+/** 编辑页「星期」下拉的三个快捷项 (升序)。 */
+export const DAY_PRESETS = {
+  every: [1, 2, 3, 4, 5, 6, 7],
+  workdays: [1, 2, 3, 4, 5],
+  weekend: [6, 7],
+} as const;
+
+export type DayPreset = keyof typeof DAY_PRESETS | "custom";
+
+/** 星期集合对应的快捷项 (与顺序无关); 对不上任何一项 (含重复 / 空) 为 custom。 */
+export function dayPreset(days: number[]): DayPreset {
+  const sorted = [...days].sort((a, b) => a - b).join(",");
+  for (const k of Object.keys(DAY_PRESETS) as (keyof typeof DAY_PRESETS)[]) {
+    if (DAY_PRESETS[k].join(",") === sorted) return k;
+  }
+  return "custom";
+}
+
+/** 结束早于开始 = 跨零点 (结束算次日)。`24:00` 结束不算; 格式不合法为 false。 */
+export function crossesMidnight(start: string, end: string): boolean {
+  const s = parseHHMM(start);
+  const e = parseHHMM(end);
+  return s !== null && e !== null && e < s;
+}
+
+const FOUR_SLOTS: FourSlot[] = ["fable", "opus", "sonnet", "haiku"];
+
+/** 与后端序列化同形: 固定槽位顺序, 省略空列表。 */
+export function normalizeSchedules(s: SlotSchedules): SlotSchedules {
+  const out: SlotSchedules = {};
+  for (const k of FOUR_SLOTS) {
+    const rules = s[k];
+    if (rules && rules.length > 0) out[k] = rules;
+  }
+  return out;
+}
+
+/** 草稿与已存配置是否相同 (空列表与缺省等价, 与键顺序无关)。 */
+export function schedulesEqual(a: SlotSchedules, b: SlotSchedules): boolean {
+  return JSON.stringify(normalizeSchedules(a)) === JSON.stringify(normalizeSchedules(b));
 }

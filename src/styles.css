@@ -3531,6 +3531,121 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 }
 .sched-rn-status.rate_limited { color: var(--err); }
 
+/* 订阅编辑页: 槽位分时段编辑 (SlotScheduleEditor, 设计稿 Subscription.dc.html) */
+.sched-ed { display: flex; flex-direction: column; gap: 16px; }
+.sched-ed-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.sched-ed-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border: 1.8px solid transparent;
+  border-radius: var(--r-sketch);
+  cursor: pointer;
+}
+.sched-ed-tab:hover { color: var(--ink); }
+.sched-ed-tab.on {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--surface);
+  border-color: var(--stroke);
+  box-shadow: 3px 3px 0 var(--fill-oat);
+}
+.sched-ed-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-ed-tab-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.sched-ed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.sched-ed-form { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sched-ed-def {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1.4px dashed var(--line);
+}
+.sched-ed-def-label { width: 46px; flex-shrink: 0; font-size: 13px; color: var(--ink-3); }
+.sched-ed-grow { flex: 1 1 150px; min-width: 0; display: flex; }
+.sched-ed-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+}
+.sched-ed-rule-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sched-ed-rule-no { min-width: 46px; flex-shrink: 0; font-size: 19px; line-height: 1; white-space: nowrap; color: var(--accent-ink); }
+/* SelectTrigger 自带 w-full, 在可换行的行里会独占一行; 这里给定宽 */
+.sched-ed-rule-line .sched-ed-days { width: 96px; flex: 0 0 auto; }
+.sched-ed-rule-line .sched-ed-time { width: 96px; flex: 0 0 auto; }
+.sched-ed-sep { color: var(--ink-4); }
+.sched-ed-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1.4px solid var(--line-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.sched-ed-del:hover:not(:disabled) { color: var(--err); border-color: var(--err); }
+.sched-ed-del:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-ed-del:disabled { opacity: 0.5; cursor: not-allowed; }
+.sched-ed-weekdays { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 54px; }
+.sched-ed-weekdays button {
+  min-width: 40px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1.4px dashed var(--line-2);
+  border-radius: var(--r-sketch-alt);
+  cursor: pointer;
+}
+.sched-ed-weekdays button.on {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--fill-butter);
+  border: 1.4px solid var(--stroke);
+}
+.sched-ed-weekdays button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-ed-empty {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--ink-4);
+  border: 1.4px dashed var(--line-2);
+  border-radius: var(--r-md);
+}
+.sched-ed-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sched-ed-checks { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 13px; color: var(--ink-2); }
+.sched-ed-checks strong { font-weight: 600; color: var(--ink); }
+.sched-ed-checks .warn { color: var(--warn); }
+.sched-ed-checks .err { color: var(--err); }
+.sched-ed-checks .ok { color: var(--ok); }
+.sched-ed-preview { min-width: 0; }
+.sched-ed-preview-title { margin-bottom: 8px; font-size: 12.5px; color: var(--ink-3); }
+
+/* ModelSlotPicker 在编辑页把四槽思考强度单列成网格 (四槽模型由 SlotScheduleEditor 编辑) */
+.slot-effort-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 16px;
+}
+.slot-effort-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slot-effort-cell > .field-label { flex: 0 0 64px; }
+
 @media (prefers-reduced-motion: reduce) {
   .sched-cursor { transition: none; }
 }
