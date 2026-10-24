@@ -100,6 +100,12 @@ pub struct Subscription {
     pub model_slots: ModelSlots,
     #[serde(default)]
     pub slot_efforts: SlotEfforts,
+    /// 各槽位此刻生效的模型 (后端按本机时间算好), TUI 不自己求值时段规则。老后端缺字段 = 全空。
+    #[serde(default)]
+    pub slot_models_now: SlotModelsNow,
+    /// 每槽位的时段规则条数 (只关心有没有规则, 规则本身不解析)。
+    #[serde(default)]
+    pub slot_schedules: SlotScheduleCounts,
     #[serde(default)]
     pub referenced_by: Vec<String>,
     #[serde(default)]
@@ -108,6 +114,74 @@ pub struct Subscription {
     pub balance_cache: Option<BalanceCache>,
     #[serde(default)]
     pub model_cache: Option<ModelCache>,
+}
+
+/// 后端 `SubscriptionDto.slot_models_now`: 各槽位此刻实际生效的模型, `None` = 此刻为空。
+/// 后端总是带齐四个键; `Default` 给老后端 (缺字段) 用。
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+pub struct SlotModelsNow {
+    #[serde(default)]
+    pub fable: Option<String>,
+    #[serde(default)]
+    pub opus: Option<String>,
+    #[serde(default)]
+    pub sonnet: Option<String>,
+    #[serde(default)]
+    pub haiku: Option<String>,
+}
+
+/// 后端 `SubscriptionDto.slot_schedules` 只取每个槽位的规则条数: 规则体 (`IgnoredAny`) 不解析。
+/// 没有规则的槽位后端省略该键。
+#[derive(Debug, Clone, Default, Deserialize, PartialEq)]
+pub struct SlotScheduleCounts {
+    #[serde(default)]
+    pub fable: Vec<serde::de::IgnoredAny>,
+    #[serde(default)]
+    pub opus: Vec<serde::de::IgnoredAny>,
+    #[serde(default)]
+    pub sonnet: Vec<serde::de::IgnoredAny>,
+    #[serde(default)]
+    pub haiku: Vec<serde::de::IgnoredAny>,
+}
+
+// `IgnoredAny` 只实现了 `PartialEq` (相等恒真), 没实现 `Eq`; `Subscription` 要 `Eq`, 手写标记。
+impl Eq for SlotScheduleCounts {}
+
+impl SlotScheduleCounts {
+    pub fn len(&self, slot: Slot) -> usize {
+        match slot {
+            Slot::Fable => self.fable.len(),
+            Slot::Opus => self.opus.len(),
+            Slot::Sonnet => self.sonnet.len(),
+            Slot::Haiku => self.haiku.len(),
+            Slot::Fallback | Slot::Jev => 0,
+        }
+    }
+}
+
+impl Subscription {
+    /// 这个槽位是否配了时段规则 (兜底槽 / Jev 槽没有时段规则)。
+    pub fn slot_is_scheduled(&self, slot: Slot) -> bool {
+        self.slot_schedules.len(slot) > 0
+    }
+
+    /// 槽位此刻生效的模型。配了规则的槽位读后端算好的 `slot_models_now` (空 = 此刻不可用);
+    /// 没配规则的槽位就是槽位自己的默认值 (空串 = `None`), 与后端求值结果一致, 也不依赖老后端
+    /// 缺不缺 `slot_models_now`。
+    pub fn slot_now(&self, slot: Slot) -> Option<&str> {
+        if self.slot_is_scheduled(slot) {
+            let now = &self.slot_models_now;
+            match slot {
+                Slot::Fable => now.fable.as_deref(),
+                Slot::Opus => now.opus.as_deref(),
+                Slot::Sonnet => now.sonnet.as_deref(),
+                Slot::Haiku => now.haiku.as_deref(),
+                Slot::Fallback | Slot::Jev => None,
+            }
+        } else {
+            Some(self.model_slots.get(slot).trim()).filter(|m| !m.is_empty())
+        }
+    }
 }
 
 /// 与后端 `SubscriptionPatch::model_slots` 整块替换: `fallback` 空串 = 未配置, 与其它槽位一样
@@ -1129,6 +1203,37 @@ mod tests {
         .unwrap();
         assert_eq!(subs[0].state, SubscriptionState::Unknown);
         assert!(subs[0].quota_usage.is_empty());
+    }
+
+    #[test]
+    fn slot_now_reads_the_backend_value_only_for_scheduled_slots() {
+        let sub: Subscription = serde_json::from_str(
+            r#"{"id":"a","display_name":"n","provider_display_name":"p","enabled":true,"state":"healthy",
+                "is_dispatchable":true,"provider_id":"p","base_url":"","auth_type":"api_key",
+                "model_slots":{"fable":"f","opus":"o","sonnet":"","haiku":"h"},
+                "slot_schedules":{"opus":[{"days":[1],"start":"18:00","end":"08:00","model":"n"}],
+                                  "sonnet":[{"days":[1],"start":"18:00","end":"08:00","model":"n"}]},
+                "slot_models_now":{"fable":"f","opus":"n","sonnet":null,"haiku":"h"}}"#,
+        )
+        .unwrap();
+        assert!(sub.slot_is_scheduled(Slot::Opus) && sub.slot_is_scheduled(Slot::Sonnet));
+        assert!(!sub.slot_is_scheduled(Slot::Fable) && !sub.slot_is_scheduled(Slot::Fallback));
+        assert_eq!(sub.slot_now(Slot::Opus), Some("n"));
+        assert_eq!(sub.slot_now(Slot::Sonnet), None, "scheduled slot with nothing in effect");
+        assert_eq!(sub.slot_now(Slot::Haiku), Some("h"));
+        assert_eq!(sub.slot_now(Slot::Fallback), None);
+    }
+
+    #[test]
+    fn slot_now_falls_back_to_configured_models_on_an_old_backend() {
+        let sub: Subscription = serde_json::from_str(
+            r#"{"id":"a","display_name":"n","provider_display_name":"p","enabled":true,"state":"healthy",
+                "is_dispatchable":true,"provider_id":"p","base_url":"","auth_type":"api_key",
+                "model_slots":{"fable":"f","opus":"o","sonnet":"","haiku":"h"}}"#,
+        )
+        .unwrap();
+        assert_eq!(sub.slot_now(Slot::Opus), Some("o"));
+        assert_eq!(sub.slot_now(Slot::Sonnet), None);
     }
 
     fn quota(period: QuotaPeriod, limit: Option<u64>, used: u64) -> QuotaUsage {

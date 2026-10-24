@@ -265,6 +265,10 @@ pub struct Strings {
     pub sub_busy_deleting: &'static str,
     /// 草稿里跟 `Store` 当前值不同的槽位行末尾追加的 muted 提示。
     pub sub_slot_modified: &'static str,
+    /// 槽位配了时段规则时, 详情槽位行末尾的标记。
+    pub slot_scheduled: &'static str,
+    /// 槽位配了时段规则、此刻却没有任何模型生效 (没命中规则且默认值为空) 时的显示。
+    pub slot_unavailable_now: &'static str,
     /// 有草稿时按 e/t/m/b 的拒绝提示 (避免重拉覆盖编辑基线)。
     pub sub_save_first: &'static str,
     /// 兜底槽 / Kiro 订阅上按 `o` 改思考档位的拒绝提示 (两种原因各一条)。
@@ -805,6 +809,8 @@ pub const ZH: Strings = Strings {
     sub_busy_saving: "正在保存…",
     sub_busy_deleting: "正在删除…",
     sub_slot_modified: "已修改",
+    slot_scheduled: "分时段",
+    slot_unavailable_now: "此时段不可用",
     sub_save_first: "先按 s 保存或 Esc 放弃当前修改",
     sub_effort_na_fallback: "兜底槽没有思考档位",
     sub_effort_na_kiro: "Kiro 不支持思考档位",
@@ -1229,6 +1235,8 @@ pub const ZH_HANT: Strings = Strings {
     sub_busy_saving: "正在儲存…",
     sub_busy_deleting: "正在刪除…",
     sub_slot_modified: "已修改",
+    slot_scheduled: "分時段",
+    slot_unavailable_now: "此時段不可用",
     sub_save_first: "先按 s 儲存或 Esc 放棄目前修改",
     sub_effort_na_fallback: "備援槽沒有思考檔位",
     sub_effort_na_kiro: "Kiro 不支援思考檔位",
@@ -1656,6 +1664,8 @@ pub const EN: Strings = Strings {
     sub_busy_saving: "Saving…",
     sub_busy_deleting: "Deleting…",
     sub_slot_modified: "modified",
+    slot_scheduled: "scheduled",
+    slot_unavailable_now: "not available now",
     sub_save_first: "Press s to save or Esc to reset your changes first",
     sub_effort_na_fallback: "The fallback slot has no reasoning effort",
     sub_effort_na_kiro: "Kiro does not support reasoning effort",
@@ -2090,6 +2100,8 @@ pub const JA: Strings = Strings {
     sub_busy_saving: "保存中…",
     sub_busy_deleting: "削除中…",
     sub_slot_modified: "変更あり",
+    slot_scheduled: "時間帯別",
+    slot_unavailable_now: "この時間帯は利用不可",
     sub_save_first: "先に s で保存するか、Esc で変更を破棄してください",
     sub_effort_na_fallback: "フォールバックスロットでは思考強度を設定できません",
     sub_effort_na_kiro: "Kiro は思考強度に対応していません",

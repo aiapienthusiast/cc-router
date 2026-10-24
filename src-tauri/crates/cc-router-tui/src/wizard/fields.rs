@@ -442,6 +442,8 @@ mod tests {
                 endpoint_protocol: "messages".into(),
                 model_slots: crate::client::dto::ModelSlots::pending(),
                 slot_efforts: Default::default(),
+                slot_models_now: Default::default(),
+                slot_schedules: Default::default(),
                 referenced_by: vec![],
                 balance_supported: false,
                 balance_cache: None,

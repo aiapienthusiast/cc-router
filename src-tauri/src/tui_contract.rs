@@ -241,6 +241,31 @@ fn subscription_detail_fields_match() {
     assert_eq!(balance_cache.snapshot.entries[0].severity, dto::BalanceSeverity::Low);
 }
 
+/// 分时段规则: 后端把 `slot_schedules` / `slot_models_now` 序列化出来, TUI 能认出哪个槽位配了规则,
+/// 并原样显示后端算好的此刻模型 (TUI 自己不求值, 所以不依赖当前时间)。
+#[test]
+fn subscription_slot_schedules_match() {
+    use cc_router_tui::client::dto::Slot;
+    let mut row = SubscriptionRow::test_fixture("zhipu", "default");
+    row.slot_schedules.opus = vec![crate::subscription::schedule::ScheduleRule {
+        days: vec![1, 2, 3, 4, 5, 6, 7],
+        start: "18:00".into(),
+        end: "08:00".into(),
+        model: "night".into(),
+    }];
+    let rt = SubscriptionRuntime::from_row(row);
+    let real = SubscriptionDto::from_runtime(&rt, Vec::new(), &HashMap::new());
+    let view: dto::Subscription = through_json(&real);
+
+    assert!(view.slot_is_scheduled(Slot::Opus));
+    assert!(!view.slot_is_scheduled(Slot::Sonnet));
+    assert_eq!(view.slot_now(Slot::Opus), real.slot_models_now.opus.as_deref(), "scheduled slot shows the backend value");
+    assert!(matches!(view.slot_now(Slot::Opus), Some("a" | "night")), "default or the night rule, depending on the clock");
+    // No rule: the configured model, same as the backend's slot_models_now.
+    assert_eq!(view.slot_now(Slot::Sonnet), real.slot_models_now.sonnet.as_deref());
+    assert_eq!(view.slot_now(Slot::Sonnet), Some("b"));
+}
+
 /// 后端的每一个余额告警级别, TUI 都必须认得 —— 落到 `Unknown` 说明 TUI 的枚举漏了一个。
 #[test]
 fn every_backend_balance_severity_is_known_to_the_tui() {
