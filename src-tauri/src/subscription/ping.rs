@@ -40,6 +40,7 @@ use crate::proxy::transform::openai_chat_completions::ChatCompletionsExtras;
 use crate::proxy::transform::openai_responses::CodexExtras;
 use crate::state::AppState;
 use crate::subscription::model::SubscriptionRow;
+use crate::subscription::schedule::WallClock;
 use crate::virtual_model::SubscriptionSlot;
 
 #[derive(Debug)]
@@ -411,6 +412,8 @@ pub async fn probe_subscription(
 /// 选一个 model 名用于探测请求, 并一并返回它来自哪个槽位。优先 sonnet → haiku → opus
 /// (CC 主用 sonnet), 都为空时退到订阅 snapshot 的 model_discovery.example_models[0]。
 /// "(pending)" 是 SubscriptionNewPage 两步向导留下的占位, 跳过。
+/// 每个槽位内依次取: 此刻生效模型 (时段规则 → 默认) → 默认模型 → 第一条规则的模型 ——
+/// 探测验证的是连通性, 不该因为「现在不在时段内」而测不了。
 ///
 /// 返回槽位是为了让 [`probe_subscription`] 能取该槽位的 forced effort —— 否则用户给"只接受
 /// 某一档的模型"固定了档位, 探测却发 yaml 默认档, 上游 400, UI 谎报"连接不通"。
@@ -419,6 +422,14 @@ pub async fn probe_subscription(
 /// 注: 刻意不遍历 fable (保持既有行为不变) —— 探测只验证连通性, 用最弱可用的槽位即可。
 /// 代价是只给 fable 槽设了 effort 的订阅, 探测不会带上那个 effort。
 pub fn pick_test_model(row: &SubscriptionRow) -> Option<(String, Option<SubscriptionSlot>)> {
+    pick_test_model_at(row, WallClock::now())
+}
+
+/// [`pick_test_model`] with the local wall-clock time injected (tests use a fixed one).
+pub fn pick_test_model_at(
+    row: &SubscriptionRow,
+    at: WallClock,
+) -> Option<(String, Option<SubscriptionSlot>)> {
     // System One 订阅不用四槽: Jev 槽优先, 否则端点 example_models (创建时已快照进 model_discovery)。
     if row.endpoint_protocol == crate::provider::model::EndpointProtocol::Systemone {
         return row
@@ -429,14 +440,27 @@ pub fn pick_test_model(row: &SubscriptionRow) -> Option<(String, Option<Subscrip
             .map(|m| (m, None));
     }
 
-    for (s, slot) in [
-        (&row.model_slots.sonnet, SubscriptionSlot::Sonnet),
-        (&row.model_slots.haiku, SubscriptionSlot::Haiku),
-        (&row.model_slots.opus, SubscriptionSlot::Opus),
+    let usable = |m: &str| {
+        let m = m.trim();
+        (!m.is_empty() && m != "(pending)").then(|| m.to_string())
+    };
+    for slot in [
+        SubscriptionSlot::Sonnet,
+        SubscriptionSlot::Haiku,
+        SubscriptionSlot::Opus,
     ] {
-        let trimmed = s.trim();
-        if !trimmed.is_empty() && trimmed != "(pending)" {
-            return Some((trimmed.to_string(), Some(slot)));
+        let picked = row
+            .slot_model_at(slot, at)
+            .and_then(usable)
+            .or_else(|| usable(row.model_slots.get(slot)))
+            .or_else(|| {
+                row.slot_schedules
+                    .get(slot)
+                    .first()
+                    .and_then(|r| usable(&r.model))
+            });
+        if let Some(m) = picked {
+            return Some((m, Some(slot)));
         }
     }
     row.model_discovery
@@ -480,7 +504,7 @@ mod tests {
         let row = SubscriptionRow::test_fixture("anthropic", "default");
         // fixture: fable="d", opus="a", sonnet="b", haiku="c"
         assert_eq!(
-            pick_test_model(&row),
+            pick_test_model_at(&row, noon()),
             Some(("b".to_string(), Some(SubscriptionSlot::Sonnet)))
         );
     }
@@ -490,7 +514,7 @@ mod tests {
         let mut row = SubscriptionRow::test_fixture("anthropic", "default");
         row.model_slots.sonnet = String::new();
         assert_eq!(
-            pick_test_model(&row),
+            pick_test_model_at(&row, noon()),
             Some(("c".to_string(), Some(SubscriptionSlot::Haiku)))
         );
     }
@@ -500,7 +524,7 @@ mod tests {
         let mut row = SubscriptionRow::test_fixture("anthropic", "default");
         row.model_slots.sonnet = "(pending)".into();
         assert_eq!(
-            pick_test_model(&row),
+            pick_test_model_at(&row, noon()),
             Some(("c".to_string(), Some(SubscriptionSlot::Haiku)))
         );
     }
@@ -515,7 +539,7 @@ mod tests {
         row.model_slots.haiku = String::new();
         row.model_discovery.example_models = vec!["example-model".into()];
         assert_eq!(
-            pick_test_model(&row),
+            pick_test_model_at(&row, noon()),
             Some(("example-model".to_string(), None))
         );
     }
@@ -586,8 +610,67 @@ mod tests {
         row.endpoint_protocol = crate::provider::model::EndpointProtocol::Systemone;
         row.model_slots.sonnet = "should-not-be-used".into();
         row.model_discovery.example_models = vec!["clef-flash".into()];
-        assert_eq!(pick_test_model(&row), Some(("clef-flash".to_string(), None)));
+        assert_eq!(pick_test_model_at(&row, noon()), Some(("clef-flash".to_string(), None)));
         row.model_slots.jev = "clef-pro".into();
-        assert_eq!(pick_test_model(&row), Some(("clef-pro".to_string(), None)));
+        assert_eq!(pick_test_model_at(&row, noon()), Some(("clef-pro".to_string(), None)));
+    }
+
+    // ---------- pick_test_model_at + slot time schedule ----------
+
+    use crate::subscription::schedule::{ScheduleRule, WallClock};
+
+    fn noon() -> WallClock {
+        WallClock { weekday: 3, minute: 12 * 60 }
+    }
+
+    fn evening() -> WallClock {
+        WallClock { weekday: 3, minute: 20 * 60 }
+    }
+
+    fn night_rule(model: &str) -> ScheduleRule {
+        ScheduleRule {
+            days: vec![1, 2, 3, 4, 5, 6, 7],
+            start: "18:00".into(),
+            end: "08:00".into(),
+            model: model.into(),
+        }
+    }
+
+    #[test]
+    fn pick_test_model_uses_first_rule_when_outside_window_and_default_blank() {
+        let mut row = SubscriptionRow::test_fixture("anthropic", "default");
+        row.model_slots.sonnet = String::new();
+        row.slot_schedules.sonnet = vec![night_rule("night-1"), night_rule("night-2")];
+        // haiku still has a default ("c"), but sonnet is tried first and has a rule model
+        assert_eq!(
+            pick_test_model_at(&row, noon()),
+            Some(("night-1".to_string(), Some(SubscriptionSlot::Sonnet)))
+        );
+    }
+
+    #[test]
+    fn pick_test_model_uses_rule_model_inside_window() {
+        let mut row = SubscriptionRow::test_fixture("anthropic", "default");
+        // default "b" is set, but the rule covers 20:00
+        row.slot_schedules.sonnet = vec![night_rule("night")];
+        assert_eq!(
+            pick_test_model_at(&row, evening()),
+            Some(("night".to_string(), Some(SubscriptionSlot::Sonnet)))
+        );
+        assert_eq!(
+            pick_test_model_at(&row, noon()),
+            Some(("b".to_string(), Some(SubscriptionSlot::Sonnet)))
+        );
+    }
+
+    #[test]
+    fn pick_test_model_skips_blank_slot_without_rules() {
+        let mut row = SubscriptionRow::test_fixture("anthropic", "default");
+        row.model_slots.sonnet = "  ".into();
+        row.model_slots.haiku = String::new();
+        assert_eq!(
+            pick_test_model_at(&row, noon()),
+            Some(("a".to_string(), Some(SubscriptionSlot::Opus)))
+        );
     }
 }

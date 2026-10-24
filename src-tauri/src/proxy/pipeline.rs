@@ -5,7 +5,7 @@ use std::time::Instant;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use tauri::Emitter;
 use tracing::{info, warn};
@@ -49,9 +49,10 @@ use crate::proxy::sanitize::{
 use crate::proxy::sse;
 use crate::proxy::upstream;
 use crate::state::AppState;
-use crate::subscription::model::SlotEfforts;
+use crate::subscription::model::{SlotEfforts, SubscriptionRow, SubscriptionRuntime};
+use crate::subscription::schedule::WallClock;
 use crate::subscription::state_machine;
-use crate::virtual_model::scheduler::build_candidate_order;
+use crate::virtual_model::scheduler::{build_candidate_order, provides_slot_at};
 use crate::virtual_model::{RoutingMode, VirtualModelName};
 
 pub(crate) const ERROR_BODY_LIMIT: usize = 4096;
@@ -84,6 +85,43 @@ fn slot_forced_effort(slot_efforts: &SlotEfforts, vm_name: VirtualModelName) -> 
         return None;
     }
     slot_efforts.get(vm_name.slot()).map(str::to_string)
+}
+
+/// 槽位此刻 (按时段规则求值后) 没有模型时的跳过原因, 503 摘要直接上屏。
+const NO_SLOT_MODEL_NOW: &str = "此时段未配置模型";
+
+/// 503 摘要里一条订阅的不可用原因。顺序: 限额 → 此时段未配置模型 (仅当状态本身可调度、
+/// 只是四槽此刻没有模型) → 状态名。
+pub(crate) fn unavailable_reason(
+    g: &SubscriptionRuntime,
+    vm: VirtualModelName,
+    now: DateTime<Utc>,
+    clock: WallClock,
+) -> String {
+    if let Some(p) = g.row.token_quotas.first_exceeded(&g.quota_usage, now) {
+        return format!("已达 {} token 限额", p.label_zh());
+    }
+    if g.is_dispatchable(now) && !provides_slot_at(&g.row, vm, clock) {
+        return NO_SLOT_MODEL_NOW.to_string();
+    }
+    format!("{:?}", g.state)
+}
+
+/// 四槽虚拟模型此刻要发给该订阅的真实模型。`Ok(None)` = fallback / jev, 由调用方走原有改写逻辑;
+/// `Err` = 此刻该槽位没有模型, 跳过这个候选 (scheduler 已按同一 `clock` 过滤, 这里兜调度之后
+/// 订阅被编辑的窗口)。
+pub(crate) fn candidate_model_or_skip(
+    row: &SubscriptionRow,
+    vm: VirtualModelName,
+    clock: WallClock,
+) -> Result<Option<String>, &'static str> {
+    match vm.four_slot() {
+        None => Ok(None),
+        Some(slot) => row
+            .slot_model_at(slot, clock)
+            .map(|m| Some(m.to_string()))
+            .ok_or(NO_SLOT_MODEL_NOW),
+    }
 }
 
 /// 按 char_indices 找 UTF-8 边界, 避免切坏多字节字符
@@ -185,8 +223,11 @@ pub async fn dispatch(
         }
         _ => None,
     };
+    // 本次请求的本地挂钟时刻只取这一次: 调度过滤、每个 attempt (含 retry) 的 model 改写与
+    // 503 摘要都用它, 否则跨整点 / 半点的一瞬会出现「调度认为可用、改写时却没有模型」。
+    let clock = WallClock::now();
     let subs_map = state.subscriptions.read().await.clone();
-    let order = build_candidate_order(&vm_config, &subs_map, Utc::now(), pinned).await;
+    let order = build_candidate_order(&vm_config, &subs_map, Utc::now(), clock, pinned).await;
     drop(subs_map);
 
     if order.candidate_ids.is_empty() {
@@ -196,10 +237,7 @@ pub async fn dispatch(
         for sub_id in &vm_config.subscription_ids {
             if let Some(rt) = subs_map.get(sub_id) {
                 let g = rt.read().await;
-                let reason = match g.row.token_quotas.first_exceeded(&g.quota_usage, now) {
-                    Some(p) => format!("已达 {} token 限额", p.label_zh()),
-                    None => format!("{:?}", g.state),
-                };
+                let reason = unavailable_reason(&g, vm_name, now, clock);
                 summary.push(format!("- {}: {}", g.row.display_name, reason));
             }
         }
@@ -234,6 +272,8 @@ pub async fn dispatch(
     let mut skipped_no_fallback_slot: Vec<String> = Vec::new();
     // systemone 订阅误入对话路径 (历史数据兜底) 时跳过, 同样记入 503 summary。
     let mut skipped_wrong_protocol: Vec<String> = Vec::new();
+    // 四槽此刻没有模型 (调度后订阅被编辑) 时跳过, 同样记入 503 summary。
+    let mut skipped_no_slot_model: Vec<String> = Vec::new();
 
     for sub_id in order.candidate_ids {
         let attempt_id = Uuid::new_v4();
@@ -252,6 +292,19 @@ pub async fn dispatch(
                 continue;
             }
         }
+
+        // 四槽: 此刻生效模型 (时段规则 → 默认); 没有则跳过此候选, 不发请求不计 retry。
+        let slot_model = {
+            let g = rt.read().await;
+            match candidate_model_or_skip(&g.row, vm_name, clock) {
+                Ok(m) => m,
+                Err(reason) => {
+                    warn!(%sub_id, display_name = %g.row.display_name, reason, "candidate skipped: slot has no model at this time");
+                    skipped_no_slot_model.push(g.row.display_name.clone());
+                    continue;
+                }
+            }
+        };
 
         // 从订阅 row snapshot 读取所有连接信息(snapshot 模型: 不再回查 state.providers)
         let (
@@ -274,19 +327,17 @@ pub async fn dispatch(
         ) = {
             let guard = rt.read().await;
             // fallback: 订阅配置了兜底槽则改写为槽值, 否则透传原始 model;
-            // 其他四个虚拟模型按 slot 映射。
+            // 其他四个虚拟模型用上面按时段求出的生效模型。
             let fallback_override: Option<String> = if is_fallback {
                 guard.row.model_slots.fallback_model().map(str::to_string)
             } else {
                 None
             };
-            let real_model = if is_fallback {
-                fallback_override
+            let real_model = match slot_model {
+                Some(m) => m,
+                None => fallback_override
                     .clone()
-                    .unwrap_or_else(|| model.to_string())
-            } else {
-                let slot = vm_name.slot();
-                guard.row.model_slots.get(slot).to_string()
+                    .unwrap_or_else(|| model.to_string()),
             };
             // 订阅槽位级 forced effort: 用户给该订阅的该槽位固定了档位时, 丢弃客户端传入的
             // effort 强制使用它 (fallback 恒 None, 见 [`slot_forced_effort`])。
@@ -1670,6 +1721,7 @@ pub async fn dispatch(
     // 所有候选都失败
     let subs_map = state.subscriptions.read().await;
     let mut summary = Vec::new();
+    let now = Utc::now();
     for sub_id in &vm_config.subscription_ids {
         if let Some(rt) = subs_map.get(sub_id) {
             let g = rt.read().await;
@@ -1682,8 +1734,12 @@ pub async fn dispatch(
                     "- {}: 未配置兜底模型, fallback 下已跳过",
                     g.row.display_name
                 ));
+            } else if skipped_no_slot_model.contains(&g.row.display_name) {
+                summary.push(format!("- {}: {}", g.row.display_name, NO_SLOT_MODEL_NOW));
             } else {
-                summary.push(format!("- {}: {:?}", g.row.display_name, g.state));
+                // 被调度过滤掉、没被尝试的订阅 (限额 / 此时段无模型) 也要说清原因, 不能只显示状态名。
+                let reason = unavailable_reason(&g, vm_name, now, clock);
+                summary.push(format!("- {}: {}", g.row.display_name, reason));
             }
         }
     }
@@ -1823,5 +1879,101 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
         assert!(jev_only_via_systemone(VirtualModelName::Sonnet).is_none());
         assert!(jev_only_via_systemone(VirtualModelName::Fallback).is_none());
+    }
+
+    // ---------- slot time schedule ----------
+
+    use crate::subscription::schedule::ScheduleRule;
+
+    fn noon() -> WallClock {
+        WallClock { weekday: 3, minute: 12 * 60 }
+    }
+
+    fn evening() -> WallClock {
+        WallClock { weekday: 3, minute: 20 * 60 }
+    }
+
+    /// Opus default blank + an every-day 18:00-08:00 rule resolving to "night".
+    fn night_only_opus_row() -> SubscriptionRow {
+        let mut row = SubscriptionRow::test_fixture("p", "e");
+        row.model_slots.opus = String::new();
+        row.slot_schedules.opus = vec![ScheduleRule {
+            days: vec![1, 2, 3, 4, 5, 6, 7],
+            start: "18:00".into(),
+            end: "08:00".into(),
+            model: "night".into(),
+        }];
+        row
+    }
+
+    #[test]
+    fn unavailable_reason_names_missing_slot_model() {
+        let rt = SubscriptionRuntime::from_row(night_only_opus_row());
+        assert_eq!(
+            unavailable_reason(&rt, VirtualModelName::Opus, Utc::now(), noon()),
+            "此时段未配置模型"
+        );
+        // other slots of the same subscription are fine -> plain state text
+        assert_eq!(
+            unavailable_reason(&rt, VirtualModelName::Sonnet, Utc::now(), noon()),
+            format!("{:?}", rt.state)
+        );
+        // fallback never reports the four-slot reason
+        assert_eq!(
+            unavailable_reason(&rt, VirtualModelName::Fallback, Utc::now(), noon()),
+            format!("{:?}", rt.state)
+        );
+    }
+
+    #[test]
+    fn unavailable_reason_prefers_quota_over_missing_slot_model() {
+        use crate::subscription::quota::TokenQuotas;
+        let mut row = night_only_opus_row();
+        row.token_quotas = TokenQuotas { total: Some(100), ..Default::default() };
+        let mut rt = SubscriptionRuntime::from_row(row);
+        let now = Utc::now();
+        rt.quota_usage.add(now, 100, 0, 0, 0);
+        assert_eq!(
+            unavailable_reason(&rt, VirtualModelName::Opus, now, noon()),
+            "已达 累计 token 限额"
+        );
+    }
+
+    #[test]
+    fn unavailable_reason_disabled_subscription_reports_state_not_slot() {
+        let mut row = night_only_opus_row();
+        row.enabled = false;
+        let mut rt = SubscriptionRuntime::from_row(row);
+        rt.state = crate::subscription::model::SubscriptionState::Disabled;
+        assert_eq!(
+            unavailable_reason(&rt, VirtualModelName::Opus, Utc::now(), noon()),
+            "Disabled"
+        );
+    }
+
+    #[test]
+    fn candidate_model_follows_schedule_for_four_slots() {
+        let row = night_only_opus_row();
+        assert_eq!(
+            candidate_model_or_skip(&row, VirtualModelName::Opus, evening()),
+            Ok(Some("night".to_string()))
+        );
+        assert_eq!(
+            candidate_model_or_skip(&row, VirtualModelName::Opus, noon()),
+            Err("此时段未配置模型")
+        );
+        // slot without rules keeps its default
+        assert_eq!(
+            candidate_model_or_skip(&row, VirtualModelName::Haiku, noon()),
+            Ok(Some("c".to_string()))
+        );
+    }
+
+    #[test]
+    fn candidate_model_leaves_fallback_and_jev_to_existing_logic() {
+        let mut row = night_only_opus_row();
+        row.model_slots.sonnet = String::new();
+        assert_eq!(candidate_model_or_skip(&row, VirtualModelName::Fallback, noon()), Ok(None));
+        assert_eq!(candidate_model_or_skip(&row, VirtualModelName::Jev, noon()), Ok(None));
     }
 }
