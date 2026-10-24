@@ -108,12 +108,33 @@ fn dispatch_result_to_probe<T>(res: Result<T, OAuthDispatchError>) -> ProbeResul
             message,
             note: None,
         },
-        Err(OAuthDispatchError::Upstream { status, message }) => ProbeResult {
+        // 有状态码 = 上游 HTTP 错误, message 是原始错误体 (可能为空): 与透传家族同款格式化。
+        // 无状态码 = cc-router 自己写的网络 / 翻译错误文案, 原样保留。
+        Err(OAuthDispatchError::Upstream { status: Some(s), message }) => ProbeResult {
             ok: false,
-            http_status: status,
+            http_status: Some(s),
+            message: http_failure_message(s, &message),
+            note: None,
+        },
+        Err(OAuthDispatchError::Upstream { status: None, message }) => ProbeResult {
+            ok: false,
+            http_status: None,
             message,
             note: None,
         },
+    }
+}
+
+/// 上游非 2xx 时给用户看的失败文案: `HTTP 4xx: <错误体前 300 字>`, 错误体为空时只有 `HTTP 4xx`。
+/// 三条探测路径 (透传 / 翻译类 dispatch / System One) 共用, 保证失败原因永远不为空 (issue #63)。
+fn http_failure_message(status: u16, body: &str) -> String {
+    let prefix = format!("HTTP {status}");
+    let snippet: String = body.trim().chars().take(300).collect();
+    // 部分 dispatch 在上游没给错误体时已自行填了 "HTTP 4xx", 不重复拼。
+    if snippet.is_empty() || snippet == prefix {
+        prefix
+    } else {
+        format!("{prefix}: {snippet}")
     }
 }
 
@@ -158,16 +179,10 @@ async fn probe(
             if status.is_success() {
                 ProbeResult::noted(true, Some(status_u16), ProbeNote::Ok)
             } else {
-                let snippet: String = body_text.chars().take(300).collect();
-                let message = if snippet.is_empty() {
-                    format!("HTTP {status_u16}")
-                } else {
-                    format!("HTTP {status_u16}: {snippet}")
-                };
                 ProbeResult {
                     ok: false,
                     http_status: Some(status_u16),
-                    message,
+                    message: http_failure_message(status_u16, &body_text),
                     note: None,
                 }
             }
@@ -199,8 +214,7 @@ async fn probe_systemone(client: &reqwest::Client, row: &SubscriptionRow, model:
             if status.is_success() {
                 ProbeResult::noted(true, Some(s), ProbeNote::Ok)
             } else {
-                let snippet: String = body_text.unwrap_or_default().chars().take(300).collect();
-                let message = if snippet.is_empty() { format!("HTTP {s}") } else { format!("HTTP {s}: {snippet}") };
+                let message = http_failure_message(s, &body_text.unwrap_or_default());
                 ProbeResult { ok: false, http_status: Some(s), message, note: None }
             }
         }
@@ -531,15 +545,39 @@ mod tests {
         }));
         assert!(!r.ok);
         assert_eq!(r.http_status, Some(400));
-        assert_eq!(r.message, "bad request");
+        assert_eq!(r.message, "HTTP 400: bad request");
 
-        // 网络层错误 status=None 时透传 None。
+        // 网络层错误 status=None 时透传 None, 文案是 cc-router 自己写的, 原样保留。
         let r2 = dispatch_result_to_probe::<()>(Err(OAuthDispatchError::Upstream {
             status: None,
             message: "网络错误".into(),
         }));
         assert!(!r2.ok);
         assert_eq!(r2.http_status, None);
+        assert_eq!(r2.message, "网络错误");
+    }
+
+    /// issue #63: 翻译类上游回空错误体时, 失败原因不能是空串。
+    #[test]
+    fn dispatch_upstream_err_with_empty_body_still_explains_failure() {
+        for body in ["", "  \n"] {
+            let r = dispatch_result_to_probe::<()>(Err(OAuthDispatchError::Upstream {
+                status: Some(502),
+                message: body.into(),
+            }));
+            assert_eq!(r.message, "HTTP 502");
+        }
+    }
+
+    #[test]
+    fn http_failure_message_formats_and_dedupes_prefix() {
+        assert_eq!(http_failure_message(404, "not found"), "HTTP 404: not found");
+        // dispatch 在没有错误体时已填了 "HTTP 4xx", 不拼成 "HTTP 403: HTTP 403"。
+        assert_eq!(http_failure_message(403, "HTTP 403"), "HTTP 403");
+        // 错误体截到 300 个字符 (按字符, 不切坏多字节)。
+        let long = "错".repeat(400);
+        let m = http_failure_message(500, &long);
+        assert_eq!(m.chars().count(), "HTTP 500: ".chars().count() + 300);
     }
 
     #[test]

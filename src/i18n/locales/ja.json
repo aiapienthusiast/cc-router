@@ -823,6 +823,7 @@
   "subscriptionEdit.testConn": "接続テスト",
   "testConnection.ok": "接続正常",
   "testConnection.okWithStatus": "接続正常 (HTTP {status})",
+  "testConnection.failed": "接続に失敗しました",
   "testConnection.network": "ネットワークエラー: {detail}",
   "testConnection.noTestModel": "このサブスクリプションにはモデルスロットが設定されておらず、代わりに使えるサンプルモデルもないため、テストできません",
   "lastError.authFailed": "認証情報が無効 (HTTP {status})",

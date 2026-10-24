@@ -823,6 +823,7 @@
   "subscriptionEdit.testConn": "测试连接",
   "testConnection.ok": "连接正常",
   "testConnection.okWithStatus": "连接正常 (HTTP {status})",
+  "testConnection.failed": "连接失败",
   "testConnection.network": "网络错误: {detail}",
   "testConnection.noTestModel": "该订阅没有配置任何模型槽位, 也没有可兜底的示例模型, 无法测试",
   "lastError.authFailed": "凭证失效 (HTTP {status})",

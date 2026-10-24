@@ -823,6 +823,7 @@
   "subscriptionEdit.testConn": "Test connection",
   "testConnection.ok": "Connected",
   "testConnection.okWithStatus": "Connected (HTTP {status})",
+  "testConnection.failed": "Connection failed",
   "testConnection.network": "Network error: {detail}",
   "testConnection.noTestModel": "This subscription has no model slots configured and no example model to fall back on, so it can't be tested",
   "lastError.authFailed": "Credentials invalid (HTTP {status})",

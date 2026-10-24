@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import { ModelSlotPicker } from "@/components/ModelSlotPicker";
@@ -570,6 +570,8 @@ export function SubscriptionEditPage() {
             <div className="page-col space-y-2">
               {testResult && (
                 <Alert variant={testResult.ok ? "default" : "destructive"}>
+                  {/* 失败必须有明确标题: 只靠边框颜色区分成败, 用户看不出来 (issue #63) */}
+                  {!testResult.ok && <AlertTitle>{t("testConnection.failed")}</AlertTitle>}
                   <AlertDescription>
                     <div>{testResultText(testResult, t)}</div>
                     {testResult.model_used && (
