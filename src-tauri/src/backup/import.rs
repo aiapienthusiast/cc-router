@@ -9,13 +9,12 @@ use uuid::Uuid;
 
 use super::format::{export_to_row, header_field, ExportFile, ExportSubscription, SecretsPlain, FIELD_API_KEY};
 use crate::commands::subscriptions::{
-    validate_base_url, validate_gemini_messages_path, validate_messages_path,
+    check_schedules_for, validate_base_url, validate_gemini_messages_path, validate_messages_path,
     validate_required_headers, validate_slot_efforts, validate_token_quotas,
 };
 use crate::error::{AppError, AppResult};
 use crate::provider::model::{AuthType, EndpointProtocol, Provider};
 use crate::subscription::model::SubscriptionRow;
-use crate::subscription::schedule::validate_slot_schedules;
 use crate::subscription::snapshot::{snapshot_connection, ConnectionSnapshot};
 use crate::virtual_model::model::{RoutingMode, VirtualModelName};
 
@@ -88,10 +87,7 @@ fn validate_entry(sub: &ExportSubscription) -> Result<(), String> {
         if sub.endpoint_protocol == EndpointProtocol::Systemone && sub.auth_type != AuthType::ApiKey {
             return Err(AppError::BadRequest("System One 端点只支持 api_key 鉴权".into()));
         }
-        validate_slot_schedules(&sub.slot_schedules).map_err(AppError::BadRequest)?;
-        if sub.endpoint_protocol == EndpointProtocol::Systemone && !sub.slot_schedules.is_empty() {
-            return Err(AppError::BadRequest("System One 订阅不支持分时段".into()));
-        }
+        check_schedules_for(sub.endpoint_protocol, &sub.slot_schedules)?;
         Ok(())
     }
     check(sub).map_err(|e| match e {
@@ -784,6 +780,25 @@ mod tests {
                 "{what} should make B invalid"
             );
         }
+    }
+
+    #[test]
+    fn systemone_schedule_skip_reason_names_system_one() {
+        let mut f = fixture(false);
+        {
+            let b = find_mut(&mut f, "B");
+            b.endpoint_protocol = EndpointProtocol::Systemone;
+            b.slot_schedules.opus = vec![ScheduleRule {
+                days: vec![1],
+                start: "08:00".into(),
+                end: "09:00".into(),
+                model: "m".into(),
+            }];
+        }
+        let p = preview(&f.file, &empty_local());
+        let b = p.subscriptions.iter().find(|s| s.display_name == "B").unwrap();
+        assert_eq!(b.status, PreviewStatus::SkipInvalid);
+        assert!(b.invalid_reason.as_deref().unwrap().contains("System One"), "{:?}", b.invalid_reason);
     }
 
     #[test]

@@ -137,6 +137,8 @@ pub fn run() {
             commands::subscriptions::probe_custom_models,
             commands::subscriptions::refresh_subscription_balance,
             commands::subscriptions::update_token_quotas,
+            commands::subscriptions::update_slot_schedules,
+            commands::subscriptions::get_host_clock,
             commands::subscriptions::reset_total_quota_usage,
             commands::virtual_models::list_virtual_models,
             commands::virtual_models::update_virtual_model,
