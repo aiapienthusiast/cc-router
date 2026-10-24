@@ -3434,7 +3434,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   background: var(--sched-bg);
   border-left: 4px solid var(--sched-bar);
   border-radius: 2px;
-  pointer-events: none;
 }
 .sched-block.empty {
   color: var(--err);

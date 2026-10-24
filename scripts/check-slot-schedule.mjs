@@ -39,7 +39,7 @@ const readJson = (rel) => JSON.parse(readFileSync(ROOT + rel, "utf8"));
 const {
   effectiveModel, clockAt, weekCells, groupDayTypes, runs, weeklyHours, ruleIssues, validateRules, HALF_HOURS,
 } = await import("../src/lib/slotSchedule.ts");
-const { modelColor } = await import("../src/lib/modelColor.ts");
+const { modelColor, assignModelColors } = await import("../src/lib/modelColor.ts");
 
 // ---- 1. 共享用例表 ----
 const toMinute = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
@@ -103,6 +103,12 @@ const c1 = modelColor("deepseek-4.1");
 check("modelColor 同名同色", same(c1, modelColor("deepseek-4.1")));
 check("modelColor 引用主题变量", /^var\(--fill-/.test(c1.bg) && c1.bar.includes("var(--fill-"));
 check("modelColor 不是单一颜色", new Set(["a", "b", "c", "d", "e", "f", "g", "h"].map((m) => modelColor(m).bg)).size > 1);
+const trio = ["deepseek-4.1", "qwen-max", "mimo-v2.6-pro"];
+const assigned = assignModelColors(trio);
+check("assignModelColors 三个模型三种颜色", new Set(trio.map((m) => assigned.get(m)?.bg)).size === 3);
+const reordered = assignModelColors(["qwen-max", "mimo-v2.6-pro", "deepseek-4.1", "qwen-max"]);
+check("assignModelColors 与传入顺序无关", same([...assigned].sort(), [...reordered].sort()));
+check("assignModelColors 引用主题变量", [...assigned.values()].every((c) => /^var\(--fill-/.test(c.bg)));
 
 // ---- 3. 源码扫描: 不得用 new Date( 推算星期 / 时刻 ----
 const scan = [`${SRC}lib/slotSchedule.ts`];

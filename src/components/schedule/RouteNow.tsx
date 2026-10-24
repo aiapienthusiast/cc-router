@@ -8,6 +8,8 @@ export type RouteNowNode = {
   /** 该时刻的生效模型; null = 此时不提供 */
   model: string | null;
   rank: "first" | "backup" | "off";
+  /** 该模型在本视图的配色 (assignModelColors), 与日程 / 色条一致; 缺省退回 modelColor */
+  color?: { bg: string; bar: string };
   /** 瞬时状态, 只在「现在」时刻由调用方给出 */
   status?: "cooldown" | "rate_limited" | null;
 };
@@ -35,8 +37,9 @@ export function RouteNow({ vmName, nodes, mode }: { vmName: string; nodes: Route
   const h = Math.max(MIN_H, n * STEP + 36);
   const hubCy = h / 2;
   const top0 = (h - ((n - 1) * STEP + NODE_H)) / 2;
+  // 没有生效模型的节点一律按不可用画, 连线 / 标签与「此时不可用」一致
   const toneOf = (node: RouteNowNode): Tone =>
-    node.rank === "off" ? "off" : mode !== "sequential" ? "on" : node.rank;
+    node.rank === "off" || node.model === null ? "off" : mode !== "sequential" ? "on" : node.rank;
   const tagOf: Record<Tone, string> = {
     first: t("schedule.route.first"),
     backup: t("schedule.route.backup"),
@@ -76,7 +79,7 @@ export function RouteNow({ vmName, nodes, mode }: { vmName: string; nodes: Route
         {nodes.map((node, i) => {
           const top = top0 + i * STEP;
           const tone = toneOf(node);
-          const on = tone !== "off" && node.model !== null;
+          const on = tone !== "off";
           return (
             <Fragment key={i}>
               <div
@@ -93,7 +96,7 @@ export function RouteNow({ vmName, nodes, mode }: { vmName: string; nodes: Route
                 <div className="sched-rn-meta">
                   <span
                     className="sched-rn-swatch"
-                    style={{ background: on ? modelColor(node.model!).bar : "var(--line)" }}
+                    style={{ background: on ? (node.color ?? modelColor(node.model!)).bar : "var(--line)" }}
                   />
                   <span>{tagOf[tone]}</span>
                   {node.status && (

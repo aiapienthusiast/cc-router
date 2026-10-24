@@ -9,7 +9,7 @@ type Color = { bg: string; bar: string } | null;
 export function WeekStrip({ cells, height = 10, label }: { cells: Color[]; height?: number; label: string }) {
   return (
     <div className="sched-strip" role="img" aria-label={label} style={{ height }}>
-      {runs(cells, (c) => (c ? c.bar : "")).map((r) => (
+      {runs(cells, (c) => (c ? `${c.bg}|${c.bar}` : "")).map((r) => (
         <span key={r.start} style={{ flexGrow: r.end - r.start, background: r.value?.bar ?? "transparent" }} />
       ))}
     </div>
