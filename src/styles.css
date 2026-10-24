@@ -3379,6 +3379,163 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   .rn-chev, .rn-row { transition: none; }
 }
 
+/* === 槽位分时段: 日型日程 / 此刻路由小图 / 一周色条 (spec 2026-10-24-slot-time-schedule §6.2-6.3) ===
+ * 块的底色 / 左条色由组件按模型写进 --sched-bg / --sched-bar (modelColor, 只引用 --fill-*);
+ * 列高由组件经 --sched-body-h 下发, 与块内行数的换算共用一个常量。 */
+.sched-cal {
+  display: grid;
+  grid-template-columns: 22px repeat(var(--sched-cols), minmax(0, 1fr));
+  column-gap: 5px;
+  align-items: end;
+}
+.sched-cal-axis { position: relative; height: var(--sched-body-h); }
+.sched-cal-axis > span {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+.sched-cal-col { min-width: 0; }
+.sched-cal-head {
+  height: 22px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sched-cal-head.cur { font-weight: 600; color: var(--ink); }
+.sched-cal-body {
+  position: relative;
+  height: var(--sched-body-h);
+  background: var(--surface-2);
+  border: 1.4px solid var(--line-2);
+  border-radius: 5px;
+}
+.sched-cal-body.hatched {
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--line) 6px 7px);
+}
+.sched-cal-body.pickable { cursor: crosshair; }
+.sched-cal-body:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sched-block {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--ink);
+  background: var(--sched-bg);
+  border-left: 4px solid var(--sched-bar);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.sched-block.empty {
+  color: var(--err);
+  background: var(--err-bg);
+  border: 1.6px dashed var(--err);
+}
+.sched-block-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sched-block-sub { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sched-block.empty .sched-block-sub { color: var(--err); }
+.sched-cursor {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  border-top: 2.4px solid var(--ink);
+  pointer-events: none;
+  transition: top 120ms ease-out;
+}
+
+/* 一周色条: 空档露出斜线底 */
+.sched-strip {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1.4px solid var(--ink-4);
+  border-radius: 3px;
+  overflow: hidden;
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 4px, var(--line) 4px 5px);
+}
+.sched-strip > span { flex-basis: 0; flex-shrink: 1; min-width: 0; }
+
+/* 此刻路由小图: 410 宽画布, 窄容器里横向滚动 (盒子位置由组件按候选数排) */
+.sched-rn-wrap { overflow-x: auto; }
+.sched-rn { position: relative; margin: 0 auto; }
+.sched-rn-edges { position: absolute; inset: 0; overflow: visible; }
+.sched-rn-edge path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.sched-rn-edge.first path { stroke: var(--accent); stroke-width: 3; }
+.sched-rn-edge.backup path { stroke: var(--ink-4); stroke-width: 1.6; }
+.sched-rn-edge.backup path:not(.head) { stroke-dasharray: 5 4; }
+.sched-rn-edge.on path { stroke: var(--ink-2); stroke-width: 2; }
+.sched-rn-edge.off path { stroke: var(--line); stroke-width: 1.6; }
+/* 盒子 44px 高, 单行文字靠 line-height 垂直居中 (flex 居中的文本节点做不了省略号) */
+.sched-rn-hub,
+.sched-rn-node {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 0 8px;
+  line-height: 40px;
+  text-align: center;
+  font-weight: 500;
+  color: var(--ink);
+  border-radius: 12px 18px 14px 16px / 16px 12px 18px 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sched-rn-hub {
+  left: 0;
+  font-size: 12.5px;
+  background: var(--accent-bg);
+  border: 2px solid var(--stroke);
+}
+.sched-rn-node {
+  font-size: 13px;
+  background: var(--surface);
+  border: 1.6px solid var(--stroke);
+}
+.sched-rn-node.first { border: 2.2px solid var(--accent); box-shadow: 3px 3px 0 var(--accent-bg); }
+.sched-rn-node.off { border: 1.6px dashed var(--line-2); color: var(--ink-4); }
+.sched-rn-info { position: absolute; min-width: 0; }
+.sched-rn-model {
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sched-rn-model.off { color: var(--ink-4); }
+.sched-rn-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.sched-rn-swatch { width: 26px; height: 6px; border-radius: 2px; flex-shrink: 0; }
+.sched-rn-status { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); }
+.sched-rn-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sched-rn-status.rate_limited { color: var(--err); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sched-cursor { transition: none; }
+}
+
 /* === Tailwind base override 兼容: 让原 ui/* shadcn 组件颜色仍可读 === */
 }
 
