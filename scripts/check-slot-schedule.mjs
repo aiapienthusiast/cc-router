@@ -126,9 +126,20 @@ check("assignModelColors 三个模型三种颜色", new Set(trio.map((m) => assi
 const reordered = assignModelColors(["qwen-max", "mimo-v2.6-pro", "deepseek-4.1", "qwen-max"]);
 check("assignModelColors 与传入顺序无关", same([...assigned].sort(), [...reordered].sort()));
 check("assignModelColors 引用主题变量", [...assigned.values()].every((c) => /^var\(--fill-/.test(c.bg)));
+// 色条用同色系深色 token, 不能混 --ink-*: 暗色下 ink 是浅色, 混出来全是灰
+check("色条不混墨色", [...assigned.values(), c1].every((c) => /^var\(--fill-[a-z-]+-bar\)$/.test(c.bar)), c1.bar);
+{
+  const css = readFileSync(`${SRC}styles.css`, "utf8");
+  const fills = new Set([...assignModelColors(["a", "b", "c", "d", "e", "f", "g", "h", "i"]).values()].map((c) => c.bar));
+  for (const bar of fills) {
+    const token = bar.slice(4, -1);
+    const n = css.split(`${token}:`).length - 1;
+    check(`${token} 亮 / 暗主题各定义一次`, n === 2, `实际 ${n}`);
+  }
+}
 
 // ---- 2b. 此刻生效模型 (列表 / 实时路由) 与虚拟模型的候选链 (虚拟模型页一周时段) ----
-const { slotModelAt, slotNow } = await import("../src/lib/slotNow.ts");
+const { slotModelAt, slotNow, slotSummaryText } = await import("../src/lib/slotNow.ts");
 const {
   candidateChain, chainKey, stablyAvailable, vmModelColors, vmWeekCells, uncoveredHours, routeNodes, neutralShade,
 } = await import("../src/components/schedule/weekChain.ts");
@@ -152,6 +163,13 @@ check("slotNow 分时段", same(slotNow(qSub, "opus", mon10), { model: "deepseek
 check("slotNow 不会被调用", same(slotNow(SUB("e", {}), "haiku", mon10), { model: null, scheduled: false, neverCalled: true }));
 check("slotNow 全天默认", same(slotNow(SUB("d", { sonnet: " m " }), "sonnet", mon10), { model: "m", scheduled: false, neverCalled: false }));
 check("slotNow 时钟未到时用后端求值", slotNow(qSub, "opus", null).model === "from-backend");
+// 摘要: 用一个把参数原样拼出来的假 t, 只断言选了哪条文案、带了什么参数
+const fakeT = (key, params) => (params ? `${key}${JSON.stringify(params)}` : key);
+check("摘要 分时段 + 默认不设置", slotSummaryText(qSub, "opus", fakeT) === 'schedule.summary.timedNoDefault{"n":2}');
+check("摘要 分时段 + 默认模型",
+  slotSummaryText(SUB("x", { opus: " base " }, { opus: [qoder[0]] }), "opus", fakeT) === 'schedule.summary.timed{"n":1,"model":"base"}');
+check("摘要 全天", slotSummaryText(SUB("y", { sonnet: "m" }), "sonnet", fakeT) === 'schedule.summary.allDay{"model":"m"}');
+check("摘要 不会被调用时不重复", slotSummaryText(SUB("z", {}), "haiku", fakeT) === null);
 
 const dso = SUB("dso", {}, { opus: [R(ALL, "00:30", "08:30", "deepseek-v4-pro")] });
 const od = SUB("od", { opus: "mimo-v2.6-pro" });
@@ -194,6 +212,12 @@ const nodes = routeNodes(VM(["off", "qoder", "cool", "od"]), map, mon10, true, c
 check("路由节点名次", same(nodes.map((n) => n.rank), ["off", "first", "backup", "backup"]), JSON.stringify(nodes.map((n) => n.rank)));
 check("路由节点模型", same(nodes.map((n) => n.model), [null, "deepseek-4.1", "z-model", "mimo-v2.6-pro"]));
 check("现在时刻带瞬时状态", same(nodes.map((n) => n.status ?? null), [null, null, "rate_limited", null]));
+{
+  const full = SUB("full", { opus: "q-model" }, {}, { is_dispatchable: false });
+  const qmap = new Map([["full", full]]);
+  check("本地限额已满在现在时刻标 quota", routeNodes(VM(["full"]), qmap, mon10, true, colors)[0].status === "quota");
+  check("本地限额已满不影响一周候选链", candidateChain(VM(["full"]), qmap, mon10).length === 1);
+}
 check("别的时刻不带瞬时状态", routeNodes(VM(["cool"]), map, mon10, false, colors).every((n) => !n.status));
 check("路由节点颜色来自视图配色", same(nodes[1].color, colors.get("deepseek-4.1")));
 

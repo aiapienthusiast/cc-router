@@ -14,6 +14,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { GripVertical, X } from "lucide-react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { stateTone } from "@/components/StatusBadge";
@@ -24,7 +25,7 @@ import { useT } from "@/i18n";
 import { isAnthropicPassthrough } from "@/lib/authTypes";
 import { modelColor } from "@/lib/modelColor";
 import { weekCells } from "@/lib/slotSchedule";
-import { slotModelAt, slotNow, slotNowText, type SlotNowView } from "@/lib/slotNow";
+import { slotModelAt, slotNow, slotNowText, slotSummaryText, type SlotNowView } from "@/lib/slotNow";
 import { jevModelOf } from "@/lib/virtualModels";
 import type { SubscriptionDto, SubscriptionSlot, VirtualModelName } from "@/types";
 
@@ -39,6 +40,8 @@ interface Props {
   vmName: VirtualModelName;
   /** 本卡片的模型配色表 (vmModelColors); 给了就在行尾画该订阅本槽位的一周小条 */
   colors?: Map<string, Color>;
+  /** 卡片展开「一周时段」时为真: 四槽位行再加配置摘要与「编辑槽位」链接 */
+  detailed?: boolean;
   onChange: (ids: string[]) => void;
   onRemove: (id: string) => void;
 }
@@ -49,6 +52,7 @@ export function SortableSubscriptionList({
   slot,
   vmName,
   colors,
+  detailed = false,
   onChange,
   onRemove,
 }: Props) {
@@ -104,6 +108,7 @@ export function SortableSubscriptionList({
                 slotView={slotView}
                 slot={slot}
                 colors={colors}
+                detailed={detailed}
                 fallbackSkipped={fallbackSkipped}
                 onRemove={() => onRemove(id)}
               />
@@ -125,6 +130,7 @@ function SortableRow({
   slotView,
   slot,
   colors,
+  detailed,
   fallbackSkipped,
   onRemove,
 }: {
@@ -138,6 +144,7 @@ function SortableRow({
   slotView: SlotNowView | null;
   slot: SubscriptionSlot | null;
   colors?: Map<string, Color>;
+  detailed: boolean;
   /** fallback 卡片专用: 翻译类订阅未配置兜底槽, dispatch 会跳过 → 显示警示替代模型名 */
   fallbackSkipped?: boolean;
   onRemove: () => void;
@@ -194,6 +201,15 @@ function SortableRow({
           </>
         )}
       </div>
+      {detailed && slotView && sub && slot !== null && (
+        <>
+          {/* 默认为空且无规则时摘要为 null: 行内已有「不会被调用」 */}
+          <span className="endpoint-summary">{slotSummaryText(sub, slot, t)}</span>
+          <Link className="endpoint-edit-link" to={`/subscriptions/${sub.id}`}>
+            {t("schedule.summary.edit")}
+          </Link>
+        </>
+      )}
       {stripCells && (
         <div className="endpoint-week">
           <WeekStrip

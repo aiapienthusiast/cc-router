@@ -11,7 +11,7 @@ export type RouteNowNode = {
   /** 该模型在本视图的配色 (assignModelColors), 与日程 / 色条一致; 缺省退回 modelColor */
   color?: { bg: string; bar: string };
   /** 瞬时状态, 只在「现在」时刻由调用方给出 */
-  status?: "cooldown" | "rate_limited" | null;
+  status?: "cooldown" | "rate_limited" | "quota" | null;
 };
 
 // 画布几何 (px)。TS 与 styles.css 的 .sched-rn-* 成对: 盒子尺寸在这里, 字号 / 描边在 CSS。
@@ -25,6 +25,12 @@ const STEP = 88;
 const MIN_H = 120;
 
 type Tone = "first" | "backup" | "on" | "off";
+
+const STATUS_KEY: Record<NonNullable<RouteNowNode["status"]>, string> = {
+  cooldown: "schedule.route.cooldown",
+  rate_limited: "schedule.route.rateLimited",
+  quota: "schedule.route.quotaFull",
+};
 
 /**
  * 某一时刻的路由小图: 左边虚拟模型, 右边按候选顺序排的订阅。
@@ -101,7 +107,7 @@ export function RouteNow({ vmName, nodes, mode }: { vmName: string; nodes: Route
                   <span>{tagOf[tone]}</span>
                   {node.status && (
                     <span className={`sched-rn-status ${node.status}`}>
-                      {t(node.status === "cooldown" ? "schedule.route.cooldown" : "schedule.route.rateLimited")}
+                      {t(STATUS_KEY[node.status])}
                     </span>
                   )}
                 </div>

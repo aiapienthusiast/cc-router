@@ -209,6 +209,7 @@ function VirtualModelCard({
           slot={slot}
           vmName={vm.name}
           colors={timed ? colors : undefined}
+          detailed={timed && weekOpen}
           onChange={onReorder}
           onRemove={onRemove}
         />
@@ -222,7 +223,7 @@ function VirtualModelCard({
         </button>
         {jev && <JevAccessHint />}
         {timed && weekOpen && (
-          <div id={weekId} className="vm-week-slot">
+          <div id={weekId}>
             <WeekSchedulePanel vm={vm} subsMap={subsMap} />
           </div>
         )}

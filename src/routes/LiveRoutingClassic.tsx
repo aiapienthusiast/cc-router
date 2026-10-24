@@ -298,7 +298,7 @@ function MappingSection() {
                           : "";
                       return (
                         <span
-                          className={sub.state === "healthy" ? "lrc-vm-real" : "lrc-vm-real err"}
+                          className={`lrc-vm-real${sub.state === "healthy" ? "" : " err"}${slotView && slotView.model === null ? " off" : ""}`}
                           key={sid}
                           title={`${sub.display_name} · ${real}`}
                         >

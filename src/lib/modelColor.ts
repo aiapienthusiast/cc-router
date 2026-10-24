@@ -25,7 +25,9 @@ type ModelColor = { bg: string; bar: string };
 function colorOf(fill: string): ModelColor {
   return {
     bg: `var(${fill})`,
-    bar: `color-mix(in srgb, var(${fill}) 45%, var(--ink-2))`,
+    // 同色系深色条, 亮 / 暗主题各有一套值 (styles.css 的 --fill-*-bar)。
+    // 不能用 color-mix 混 --ink-2: 暗色下 ink 是浅色, 混出来全是灰。
+    bar: `var(${fill}-bar)`,
   };
 }
 

@@ -149,6 +149,16 @@
   --fill-clay-deep: #C9694A;
   --fill-nose:      #F0A48A;
   --fill-stone:     #CFCCC2;
+  /* 每个柔和色的同色系深色条 (槽位分时段的色条 / 日程块左条 / 图例): 色块偏淡时仍要一眼分得开 */
+  --fill-oat-bar:       #8A7A5C;
+  --fill-cactus-bar:    #4E7D6E;
+  --fill-heather-bar:   #6B679A;
+  --fill-coral-bar:     #A65A62;
+  --fill-butter-bar:    #A9781C;
+  --fill-sky-bar:       #4F7FAE;
+  --fill-clay-deep-bar: #8F3F25;
+  --fill-nose-bar:      #C9694A;
+  --fill-stone-bar:     #6E6D66;
   --blob:           #EDE6DA;
   --grid:           rgba(20, 20, 19, 0.06);
 
@@ -351,6 +361,16 @@
   --fill-clay-deep: #B85E41;
   --fill-nose:      #B8735E;
   --fill-stone:     #5E5D59;
+  /* 暗色下色块是压暗的底, 色条要反过来提亮、保住饱和度 */
+  --fill-oat-bar:       #BBA884;
+  --fill-cactus-bar:    #7FB3A1;
+  --fill-heather-bar:   #9C98D0;
+  --fill-coral-bar:     #D88C94;
+  --fill-butter-bar:    #D9B050;
+  --fill-sky-bar:       #78A8D8;
+  --fill-clay-deep-bar: #F0A080;
+  --fill-nose-bar:      #E08766;
+  --fill-stone-bar:     #A8A69D;
   --blob:           #2E2B28;
   --grid:           rgba(240, 238, 230, 0.05);
 
@@ -3663,6 +3683,28 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   white-space: nowrap;
 }
 .endpoint-model.off { color: var(--ink-4); }
+/* 实时路由映射表: 此刻没有生效模型 (此时段不可用 / 不会被调用) 与绑定行同样压暗 */
+.vm-real.off, .lrc-vm-real.off { color: var(--ink-4); }
+/* 展开「一周时段」时的绑定行: 配置摘要 + 编辑槽位 */
+.endpoint-summary {
+  flex: 1 1 160px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.endpoint-edit-link {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--accent-ink);
+  text-decoration: none;
+  border-bottom: 1.4px solid var(--accent-line);
+  line-height: 1.3;
+}
+.endpoint-edit-link:hover { color: var(--accent); }
+.endpoint-edit-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 绑定行尾: 该订阅本槽位一周可用小条 */
 .endpoint-week { flex: 0 0 72px; min-width: 0; }
 .slot-card.wide .endpoint-week { flex-basis: 140px; }
@@ -3695,7 +3737,9 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .vm-week-toggle.on svg { transform: rotate(180deg); }
 /* 展开后卡片通栏 (同 fallback 的 wide), 但保留普通投影: 它仍是四个槽位之一 */
 .slot-card.week-open { box-shadow: var(--shadow-card); }
-.slot-card.wide .vm-week-slot { grid-column: 1 / -1; min-width: 0; }
+/* 不沿用 fallback 通栏的两列 slot-body: 绑定列表要整行宽, 才放得下摘要与一周小条 */
+.slot-card.week-open .slot-body { display: block; }
+.slot-card.week-open .add-endpoint.compact { margin-top: 5px; }
 
 .vm-week {
   margin-top: 8px;

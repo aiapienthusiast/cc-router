@@ -129,5 +129,7 @@ export function routeNodes(
 function transientStatus(sub: SubscriptionDto): RouteNowNode["status"] {
   if (sub.state === "rate_limited") return "rate_limited";
   if (sub.state === "transient_error" || sub.state === "quota_exhausted") return "cooldown";
+  // 状态正常却不可调度 = 本地 token 限额已满 (到下一周期自动恢复)
+  if (sub.is_dispatchable === false) return "quota";
   return null;
 }
