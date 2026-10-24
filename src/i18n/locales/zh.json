@@ -1147,5 +1147,14 @@
   "releaseNotes.lang.zh": "简体中文",
   "releaseNotes.lang.zh-Hant": "繁体中文",
   "releaseNotes.lang.en": "英文",
-  "releaseNotes.lang.ja": "日文"
+  "releaseNotes.lang.ja": "日文",
+  "schedule.err.too_many": "每个槽位的时段规则最多 16 条",
+  "schedule.err.days_empty": "至少选择一个星期",
+  "schedule.err.days_range": "星期必须在 1-7 之间",
+  "schedule.err.days_dup": "星期重复",
+  "schedule.err.start_format": "开始时间必须是整点或半点",
+  "schedule.err.start_24": "开始时间不能是 24:00",
+  "schedule.err.end_format": "结束时间必须是整点或半点",
+  "schedule.err.same": "开始与结束时间不能相同",
+  "schedule.err.model_empty": "模型不能为空"
 }

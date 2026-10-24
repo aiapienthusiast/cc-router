@@ -223,6 +223,33 @@ export interface SlotEfforts {
   haiku?: SlotEffort;
 }
 
+/** 四个可调度的模型槽位 (不含 jev / fallback)。 */
+export type FourSlot = "fable" | "opus" | "sonnet" | "haiku";
+
+/**
+ * 槽位分时段规则。days 是 ISO 星期 (1=周一..7=周日), 指规则「开始」那天;
+ * start > end 表示跨零点; end 可为 "24:00"。与 Rust `ScheduleRule` 对齐。
+ */
+export interface ScheduleRule {
+  days: number[];
+  start: string;
+  end: string;
+  model: string;
+}
+
+/** 每槽位的规则列表; 空列表的 key 后端不返回。与 Rust `SlotSchedules` 对齐。 */
+export type SlotSchedules = Partial<Record<FourSlot, ScheduleRule[]>>;
+
+/** 各槽位此刻生效的模型 (宿主机时钟); 未配置 / 空白为 null。 */
+export type SlotModelsNow = Record<FourSlot, string | null>;
+
+/** 宿主机本地时钟: weekday 1(周一)..7(周日), minute 0..1439。 */
+export interface HostClockDto {
+  weekday: number;
+  minute: number;
+  epoch_ms: number;
+}
+
 export type QuotaPeriod = "daily" | "weekly" | "monthly" | "total";
 
 /** 每周期 token 限额 (cc-router 侧安全阀)。字段缺失/undefined = 该周期不限。 */
@@ -320,6 +347,10 @@ export interface SubscriptionDto {
   slot_efforts: SlotEfforts;
   /** 每周期 token 限额。字段缺失 = 该周期不限。后端总是带这个 key (可以是 {})。 */
   token_quotas: TokenQuotas;
+  /** 每槽位分时段模型规则。后端总是带这个 key (可以是 {})。 */
+  slot_schedules: SlotSchedules;
+  /** 各槽位此刻生效的模型 (宿主机时钟求值), 四个 key 总是都在。 */
+  slot_models_now: SlotModelsNow;
   /** 四周期用量快照, 固定按 daily/weekly/monthly/total 顺序返回 4 条。 */
   quota_usage: QuotaUsageDto[];
   enabled: boolean;

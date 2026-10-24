@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn shared_cases() {
         let cases: Vec<Case> = serde_json::from_str(CASES).expect("slot-schedule-cases.json");
-        assert!(cases.len() >= 14);
+        assert!(cases.len() >= 15);
         for c in cases {
             let at = WallClock {
                 weekday: c.at.weekday,
