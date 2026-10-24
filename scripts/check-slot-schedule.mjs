@@ -127,8 +127,78 @@ const reordered = assignModelColors(["qwen-max", "mimo-v2.6-pro", "deepseek-4.1"
 check("assignModelColors 与传入顺序无关", same([...assigned].sort(), [...reordered].sort()));
 check("assignModelColors 引用主题变量", [...assigned.values()].every((c) => /^var\(--fill-/.test(c.bg)));
 
+// ---- 2b. 此刻生效模型 (列表 / 实时路由) 与虚拟模型的候选链 (虚拟模型页一周时段) ----
+const { slotModelAt, slotNow } = await import("../src/lib/slotNow.ts");
+const {
+  candidateChain, chainKey, stablyAvailable, vmModelColors, vmWeekCells, uncoveredHours, routeNodes, neutralShade,
+} = await import("../src/components/schedule/weekChain.ts");
+
+const SUB = (id, slots, schedules = {}, extra = {}) => ({
+  id,
+  display_name: id,
+  enabled: true,
+  state: "healthy",
+  model_slots: { fable: "", opus: "", sonnet: "", haiku: "", ...slots },
+  slot_schedules: schedules,
+  slot_models_now: { fable: null, opus: "from-backend", sonnet: null, haiku: null },
+  ...extra,
+});
+const sat7 = { weekday: 6, minute: 420 };
+const qSub = SUB("qoder", { opus: "" }, { opus: qoder });
+check("slotModelAt 按规则", slotModelAt(qSub, "opus", mon10) === "deepseek-4.1");
+check("slotModelAt 周六早上 (周五夜跨零点)", slotModelAt(qSub, "opus", sat7) === "qwen-max");
+check("slotModelAt 周日空档", slotModelAt(qSub, "opus", { weekday: 7, minute: 600 }) === null);
+check("slotNow 分时段", same(slotNow(qSub, "opus", mon10), { model: "deepseek-4.1", scheduled: true, neverCalled: false }));
+check("slotNow 不会被调用", same(slotNow(SUB("e", {}), "haiku", mon10), { model: null, scheduled: false, neverCalled: true }));
+check("slotNow 全天默认", same(slotNow(SUB("d", { sonnet: " m " }), "sonnet", mon10), { model: "m", scheduled: false, neverCalled: false }));
+check("slotNow 时钟未到时用后端求值", slotNow(qSub, "opus", null).model === "from-backend");
+
+const dso = SUB("dso", {}, { opus: [R(ALL, "00:30", "08:30", "deepseek-v4-pro")] });
+const od = SUB("od", { opus: "mimo-v2.6-pro" });
+const off = SUB("off", { opus: "x-model" }, {}, { enabled: false });
+const authBad = SUB("bad", { opus: "y-model" }, {}, { state: "auth_failed" });
+const cool = SUB("cool", { opus: "z-model" }, {}, { state: "rate_limited" });
+const map = new Map([qSub, dso, od, off, authBad, cool].map((s) => [s.id, s]));
+const VM = (ids, mode = "sequential", name = "model-opus") => ({ name, mode, subscription_ids: ids });
+const opusVm = VM(["qoder", "dso", "od"]);
+const ids = (chain) => chain.map((c) => `${c.sub.id}:${c.model}`);
+check("候选链 周一 10:00", same(ids(candidateChain(opusVm, map, mon10)), ["qoder:deepseek-4.1", "od:mimo-v2.6-pro"]));
+check("候选链 周六 07:00", same(ids(candidateChain(opusVm, map, sat7)), ["qoder:qwen-max", "dso:deepseek-v4-pro", "od:mimo-v2.6-pro"]));
+check("停用 / 凭证失效全周不可用, 瞬时状态不影响",
+  same(ids(candidateChain(VM(["off", "bad", "cool"]), map, mon10)), ["cool:z-model"]));
+check("stablyAvailable", !stablyAvailable(off) && !stablyAvailable(authBad) && stablyAvailable(cool));
+check("缺失的订阅跳过", candidateChain(VM(["ghost", "od"]), map, mon10).length === 1);
+check("fallback / jev 没有候选链", candidateChain(VM(["od"], "sequential", "model-fallback"), map, mon10).length === 0
+  && candidateChain(VM(["od"], "sequential", "model-jev"), map, mon10).length === 0);
+check("chainKey 空链与任何非空链不同", chainKey([]) !== chainKey(candidateChain(VM(["od"]), map, mon10))
+  && chainKey(candidateChain(opusVm, map, mon10)) !== chainKey(candidateChain(opusVm, map, sat7)));
+
+const colors = vmModelColors(opusVm, map);
+check("视图配色覆盖默认与规则里的全部模型",
+  same([...colors.keys()].sort(), ["deepseek-4.1", "deepseek-v4-pro", "mimo-v2.6-pro", "qwen-max"]));
+check("视图配色互不相同", new Set([...colors.values()].map((c) => c.bg)).size === 4);
+const seqCells = vmWeekCells(opusVm, map, colors);
+check("顺序模式色条按首选模型着色", seqCells.length === 336 && same(seqCells[20], colors.get("deepseek-4.1")));
+const gapVm = VM(["qoder"]);
+const gapOf = (vm) => uncoveredHours(weekCells((at) => candidateChain(vm, map, at)));
+check("无可用小时数 (qoder 单独)", gapOf(gapVm) === 48, String(gapOf(gapVm)));
+check("无可用小时数 (od 全天兜住)", gapOf(opusVm) === 0);
+check("没绑订阅 = 168 小时无可用", gapOf(VM([])) === 168);
+const rrVm = VM(["qoder", "dso", "od"], "round_robin");
+const rrCells = vmWeekCells(rrVm, map, colors);
+check("轮询色条用中性色按参与数深浅",
+  same(rrCells[20], neutralShade(2, 3)) && same(rrCells[5 * 48 + 14], neutralShade(3, 3)) && !same(neutralShade(2, 3), neutralShade(3, 3)));
+check("轮询无参与时为空档", vmWeekCells(VM(["qoder"], "round_robin"), map, colors)[6 * 48 + 20] === null);
+
+const nodes = routeNodes(VM(["off", "qoder", "cool", "od"]), map, mon10, true, colors);
+check("路由节点名次", same(nodes.map((n) => n.rank), ["off", "first", "backup", "backup"]), JSON.stringify(nodes.map((n) => n.rank)));
+check("路由节点模型", same(nodes.map((n) => n.model), [null, "deepseek-4.1", "z-model", "mimo-v2.6-pro"]));
+check("现在时刻带瞬时状态", same(nodes.map((n) => n.status ?? null), [null, null, "rate_limited", null]));
+check("别的时刻不带瞬时状态", routeNodes(VM(["cool"]), map, mon10, false, colors).every((n) => !n.status));
+check("路由节点颜色来自视图配色", same(nodes[1].color, colors.get("deepseek-4.1")));
+
 // ---- 3. 源码扫描: 不得用 new Date( 推算星期 / 时刻 ----
-const scan = [`${SRC}lib/slotSchedule.ts`];
+const scan = [`${SRC}lib/slotSchedule.ts`, `${SRC}lib/slotNow.ts`];
 const walk = (dir) => {
   if (!existsSync(dir)) return;
   for (const f of readdirSync(dir)) {

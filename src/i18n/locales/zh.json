@@ -1209,5 +1209,21 @@
   "schedule.edit.neverAvailable": "这个槽位一周都不可用：引用它的虚拟模型会跳过本订阅",
   "schedule.edit.previewTitle": "本槽位一周预览 · 斜线 = 不可用",
   "schedule.edit.modelListLabel": "模型列表",
-  "schedule.edit.saveInvalid": "{slot} 的时段规则有误：{msg}"
+  "schedule.edit.saveInvalid": "{slot} 的时段规则有误：{msg}",
+  "schedule.now.scheduled": "分时段",
+  "schedule.now.unavailable": "此时段不可用",
+  "schedule.now.neverCalled": "不会被调用",
+  "schedule.week.label": "一周",
+  "schedule.week.title": "一周时段",
+  "schedule.week.desc": "安排相同的日子自动合并 · 点日程任意位置，右侧路由跳到那一刻 · 按运行 cc-router 的电脑的时间",
+  "schedule.week.coverFull": "一周 168 小时都有可用订阅",
+  "schedule.week.coverGap": "有 {n} 小时无可用订阅",
+  "schedule.week.participants": "{n} 家参与",
+  "schedule.week.participantsLabel": "参与订阅",
+  "schedule.week.now": "现在",
+  "schedule.week.time": "时间",
+  "schedule.week.chain": "候选链",
+  "schedule.week.chainEmpty": "此刻没有可用订阅，请求会返回 503",
+  "schedule.week.stripAria": "{vm} 一周的首选模型",
+  "schedule.week.rowStripAria": "{name} 的 {slot} 槽一周内何时可用"
 }

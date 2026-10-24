@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Check, Copy, Plus, Search } from "lucide-react";
+import { useId, useMemo, useState } from "react";
+import { Check, ChevronDown, Copy, Plus, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +11,15 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { SortableSubscriptionList } from "@/components/SortableSubscriptionList";
 import { StarPrompt } from "@/components/StarPrompt";
+import { WeekSchedulePanel } from "@/components/schedule/WeekSchedulePanel";
+import { WeekStrip } from "@/components/schedule/WeekStrip";
+import { vmModelColors, vmWeekCells } from "@/components/schedule/weekChain";
+import { useHostClock } from "@/hooks/useHostClock";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useProxyStatus } from "@/hooks/useSettings";
 import { useVirtualModels, useUpdateVirtualModel } from "@/hooks/useVirtualModels";
 import { isAnthropicPassthrough } from "@/lib/authTypes";
+import { slotNow, slotNowText } from "@/lib/slotNow";
 import { customProviderLabel } from "@/lib/providerLabels";
 import { providerName as localProviderName } from "@/lib/providerText";
 import { VM_META, VM_ORDER, isJev, jevModelOf, vmAccepts, vmNameToSlot } from "@/lib/virtualModels";
@@ -95,6 +100,8 @@ function VirtualModelCard({
   const { t } = useT();
   const updateMut = useUpdateVirtualModel();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [weekOpen, setWeekOpen] = useState(false);
+  const weekId = useId();
   const meta = VM_META[vm.name];
 
   function update(mode: RoutingMode, subscription_ids: string[]) {
@@ -122,9 +129,21 @@ function VirtualModelCard({
   // fallback 是第 5 个虚拟模型, 语义上与 4 个槽位并列而非同级, 通栏独占一行
   const isFallback = vm.name === "model-fallback";
   const jev = isJev(vm.name);
+  // 一周色条 / 时段面板只属于四个槽位: fallback 与 jev 不受时段规则影响
+  const timed = slot !== null;
+  // 本卡片一张配色表: 头部色条、绑定行小条、展开面板里的日程 / 路由图 / 图例同一模型同色
+  const colors = useMemo(() => vmModelColors(vm, subsMap), [vm, subsMap]);
+  const stripCells = useMemo(() => (timed ? vmWeekCells(vm, subsMap, colors) : []), [timed, vm, subsMap, colors]);
+  const cardClass = jev
+    ? "slot-card wide jev"
+    : isFallback
+      ? "slot-card wide"
+      : weekOpen
+        ? "slot-card wide week-open"
+        : "slot-card";
 
   return (
-    <div className={jev ? "slot-card wide jev" : isFallback ? "slot-card wide" : "slot-card"}>
+    <div className={cardClass}>
       {jev && (
         <div className="jev-hangtag" aria-hidden="true">
           <span className="jev-hangtag-string" />
@@ -166,12 +185,30 @@ function VirtualModelCard({
         </div>
       </div>
 
+      {timed && (
+        <div className="vm-week-row">
+          <span className="vm-week-row-label">{t("schedule.week.label")}</span>
+          <WeekStrip cells={stripCells} label={t("schedule.week.stripAria", { vm: vm.name })} />
+          <button
+            type="button"
+            className={weekOpen ? "vm-week-toggle on" : "vm-week-toggle"}
+            aria-expanded={weekOpen}
+            aria-controls={weekOpen ? weekId : undefined}
+            onClick={() => setWeekOpen((v) => !v)}
+          >
+            {t("schedule.week.title")}
+            <ChevronDown size={13} aria-hidden />
+          </button>
+        </div>
+      )}
+
       <div className="slot-body">
         <SortableSubscriptionList
           subscriptionIds={vm.subscription_ids}
           subscriptions={subsMap}
           slot={slot}
           vmName={vm.name}
+          colors={timed ? colors : undefined}
           onChange={onReorder}
           onRemove={onRemove}
         />
@@ -184,6 +221,11 @@ function VirtualModelCard({
           <Plus size={12} /> {t("virtualModels.addButtonShort")}
         </button>
         {jev && <JevAccessHint />}
+        {timed && weekOpen && (
+          <div id={weekId} className="vm-week-slot">
+            <WeekSchedulePanel vm={vm} subsMap={subsMap} />
+          </div>
+        )}
       </div>
 
       <AddSubscriptionDialog
@@ -237,6 +279,7 @@ function AddSubscriptionDialog({
   onConfirm: (ids: string[]) => void;
 }) {
   const { t, locale } = useT();
+  const clock = useHostClock();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const candidates = allSubs.filter(
@@ -248,7 +291,7 @@ function AddSubscriptionDialog({
   // 与 SortableSubscriptionList 同一套规则: 加进来之后这条订阅在本卡片里实际会用的模型
   const modelFor = (sub: SubscriptionDto) => {
     if (isJev(vmName)) return jevModelOf(sub) ?? t("sortableSub.passthrough");
-    if (slot !== null) return sub.model_slots[slot] || "—";
+    if (slot !== null) return slotNowText(slotNow(sub, slot, clock), t);
     return sub.model_slots.fallback?.trim() || t("sortableSub.passthrough");
   };
 

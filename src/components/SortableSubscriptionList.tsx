@@ -13,14 +13,22 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useMemo } from "react";
 import { GripVertical, X } from "lucide-react";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { stateTone } from "@/components/StatusBadge";
+import { WeekStrip } from "@/components/schedule/WeekStrip";
+import { useHostClock } from "@/hooks/useHostClock";
 import { useRouteFlashState } from "@/hooks/useRouteFlash";
 import { useT } from "@/i18n";
 import { isAnthropicPassthrough } from "@/lib/authTypes";
+import { modelColor } from "@/lib/modelColor";
+import { weekCells } from "@/lib/slotSchedule";
+import { slotModelAt, slotNow, slotNowText, type SlotNowView } from "@/lib/slotNow";
 import { jevModelOf } from "@/lib/virtualModels";
 import type { SubscriptionDto, SubscriptionSlot, VirtualModelName } from "@/types";
+
+type Color = { bg: string; bar: string };
 
 interface Props {
   subscriptionIds: string[];
@@ -29,6 +37,8 @@ interface Props {
   slot: SubscriptionSlot | null;
   /** 用于关联实时路由事件: 同一订阅在不同 vm 槽位下独立闪烁 */
   vmName: VirtualModelName;
+  /** 本卡片的模型配色表 (vmModelColors); 给了就在行尾画该订阅本槽位的一周小条 */
+  colors?: Map<string, Color>;
   onChange: (ids: string[]) => void;
   onRemove: (id: string) => void;
 }
@@ -38,10 +48,12 @@ export function SortableSubscriptionList({
   subscriptions,
   slot,
   vmName,
+  colors,
   onChange,
   onRemove,
 }: Props) {
   const { t } = useT();
+  const clock = useHostClock();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
@@ -69,12 +81,14 @@ export function SortableSubscriptionList({
             // 未配置且翻译类 → 警示 (dispatch 层会跳过该候选)。
             const isJevCard = vmName === "model-jev";
             const fallbackModel = sub?.model_slots.fallback?.trim() ?? "";
+            // 四槽位: 按宿主机此刻求值 (分时段规则), 不再直接显示默认值
+            const slotView = !isJevCard && slot !== null && sub ? slotNow(sub, slot, clock) : null;
             const realModel = isJevCard
               ? (sub && jevModelOf(sub)) || t("sortableSub.passthrough")
               : slot === null
                 ? fallbackModel || t("sortableSub.passthrough")
-                : sub
-                  ? sub.model_slots[slot]
+                : slotView
+                  ? slotNowText(slotView, t)
                   : "?";
             const fallbackSkipped =
               !isJevCard && slot === null && !fallbackModel && !!sub && !isAnthropicPassthrough(sub.auth_type);
@@ -87,6 +101,9 @@ export function SortableSubscriptionList({
                 sub={sub}
                 iconId={sub?.provider_icon}
                 realModel={realModel}
+                slotView={slotView}
+                slot={slot}
+                colors={colors}
                 fallbackSkipped={fallbackSkipped}
                 onRemove={() => onRemove(id)}
               />
@@ -105,6 +122,9 @@ function SortableRow({
   sub,
   iconId,
   realModel,
+  slotView,
+  slot,
+  colors,
   fallbackSkipped,
   onRemove,
 }: {
@@ -114,6 +134,10 @@ function SortableRow({
   sub: SubscriptionDto | undefined;
   iconId: string | undefined;
   realModel: string;
+  /** 四槽位卡片: 此刻生效模型的显示信息; fallback / jev 为 null */
+  slotView: SlotNowView | null;
+  slot: SubscriptionSlot | null;
+  colors?: Map<string, Color>;
   /** fallback 卡片专用: 翻译类订阅未配置兜底槽, dispatch 会跳过 → 显示警示替代模型名 */
   fallbackSkipped?: boolean;
   onRemove: () => void;
@@ -132,6 +156,15 @@ function SortableRow({
     tone === "ok" ? "" : tone === "err" ? " err" : tone === "warn" ? " warn" : " idle";
   const flashClass = flash ? ` route-flash-${flash.kind}` : "";
 
+  // 该订阅本槽位一周何时可用 (只看时段规则, 与编辑页预览同口径)
+  const stripCells = useMemo(() => {
+    if (!colors || !sub || slot === null) return null;
+    return weekCells((at) => {
+      const m = slotModelAt(sub, slot, at);
+      return m === null ? null : (colors.get(m) ?? modelColor(m));
+    });
+  }, [colors, sub, slot]);
+
   return (
     <div ref={setNodeRef} style={style} className={`endpoint compact${flashClass}`}>
       <button className="grip" {...attributes} {...listeners} type="button" aria-label={t("sortableSub.dragHandle")}>
@@ -148,10 +181,28 @@ function SortableRow({
           <div className="endpoint-model">
             <span className="pill err">{t("sortableSub.fallbackSkipped")}</span>
           </div>
+        ) : slotView?.neverCalled ? (
+          <div className="endpoint-model">
+            <span className="pill warn">{realModel}</span>
+          </div>
         ) : (
-          <div className="endpoint-model mono">{realModel}</div>
+          <>
+            <div className={slotView && slotView.model === null ? "endpoint-model off" : "endpoint-model mono"}>
+              {realModel}
+            </div>
+            {slotView?.scheduled && <span className="slot-now-mark">{t("schedule.now.scheduled")}</span>}
+          </>
         )}
       </div>
+      {stripCells && (
+        <div className="endpoint-week">
+          <WeekStrip
+            cells={stripCells}
+            height={8}
+            label={t("schedule.week.rowStripAria", { name: sub?.display_name ?? "", slot: `model-${slot}` })}
+          />
+        </div>
+      )}
       <button className="remove" onClick={onRemove} type="button" aria-label={t("sortableSub.remove")}>
         <X size={12} strokeWidth={2} />
       </button>

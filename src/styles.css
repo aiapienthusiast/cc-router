@@ -3646,8 +3646,128 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .slot-effort-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .slot-effort-cell > .field-label { flex: 0 0 64px; }
 
+/* 「分时段」小标记: 槽位设了时段规则 (绑定行 / 实时路由映射表) */
+.slot-now-mark {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--r-sketch);
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.endpoint-model.off { color: var(--ink-4); }
+/* 绑定行尾: 该订阅本槽位一周可用小条 */
+.endpoint-week { flex: 0 0 72px; min-width: 0; }
+.slot-card.wide .endpoint-week { flex-basis: 140px; }
+
+/* 虚拟模型卡片: 一周色条 + 展开「一周时段」(只有四个槽位) */
+.vm-week-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -2px 0 10px;
+}
+.vm-week-row-label { font-size: 11.5px; color: var(--ink-3); flex-shrink: 0; }
+.vm-week-row .sched-strip { flex: 1 1 auto; border-color: var(--stroke); }
+.vm-week-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border: 1.4px solid var(--line-2);
+  border-radius: var(--r-sketch);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.vm-week-toggle:hover { border-color: var(--ink-4); color: var(--ink); }
+.vm-week-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vm-week-toggle svg { transition: transform 150ms ease-out; }
+.vm-week-toggle.on svg { transform: rotate(180deg); }
+/* 展开后卡片通栏 (同 fallback 的 wide), 但保留普通投影: 它仍是四个槽位之一 */
+.slot-card.week-open { box-shadow: var(--shadow-card); }
+.slot-card.wide .vm-week-slot { grid-column: 1 / -1; min-width: 0; }
+
+.vm-week {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1.4px dashed var(--line-2);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.vm-week-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.vm-week-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 17px;
+  color: var(--ink);
+}
+.vm-week-desc { font-size: 12px; color: var(--ink-3); }
+.vm-week-cover { margin-left: auto; }
+.vm-week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+.vm-week-scrub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1.4px dashed var(--line-2);
+}
+.vm-week-scrub input[type="range"] { flex: 1 1 240px; min-width: 0; accent-color: var(--accent); }
+.vm-week-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1.6px solid var(--stroke);
+  border-radius: var(--r-sketch);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  box-shadow: 2px 2px 0 var(--fill-oat);
+  cursor: pointer;
+}
+.vm-week-now[aria-pressed="true"] { background: var(--surface-2); box-shadow: none; }
+.vm-week-now:disabled { opacity: 0.55; cursor: default; }
+.vm-week-now:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vm-week-time { min-width: 96px; text-align: right; font-size: 14px; font-weight: 500; color: var(--ink); }
+.vm-week-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; }
+.vm-week-chain-label { color: var(--ink-3); }
+.vm-week-chain-item { color: var(--ink-2); }
+.vm-week-chain-item.first { color: var(--ink); font-weight: 600; }
+.vm-week-chain-sep { color: var(--ink-4); }
+.vm-week-chain-empty { color: var(--err); font-weight: 600; }
+.vm-week-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.vm-week-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.vm-week-swatch {
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  border-left: 4px solid;
+  flex-shrink: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sched-cursor { transition: none; }
+  .vm-week-toggle svg { transition: none; }
 }
 
 /* === Tailwind base override 兼容: 让原 ui/* shadcn 组件颜色仍可读 === */
