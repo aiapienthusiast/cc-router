@@ -4036,3 +4036,40 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .ob-status.err { background: var(--err-bg); color: var(--err); font-weight: 500; }
 .ob-loading { display: flex; align-items: center; gap: 8px; padding: 24px 0; font-size: 13px; color: var(--ink-3); }
 .ob-test { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+
+/* 引导 · 接入 AI 工具 */
+.tabs.ob-tabs { margin-bottom: 2px; }
+.ob-copy-list { border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.ob-copy-row {
+  display: grid; grid-template-columns: 140px minmax(0, 1fr) 36px; align-items: center; gap: 10px;
+  min-height: 42px; padding: 0 6px 0 14px;
+}
+.ob-copy-row + .ob-copy-row { border-top: 1.5px solid var(--line); }
+.ob-copy-label { font-size: 12.5px; color: var(--ink-3); }
+.ob-copy-value { font-family: var(--font-mono); font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob-copy-btn {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border: none; background: none; border-radius: var(--r-blob); color: var(--ink-3); cursor: pointer;
+}
+.ob-copy-btn:hover { background: var(--surface-3); color: var(--ink); }
+.ob-copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ob-copy-btn .ok { color: var(--ok); }
+.ob-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ob-chips .ob-h { margin: 0 4px 0 0; }
+.ob-model-chip {
+  padding: 2px 8px; border-radius: 6px;
+  background: var(--surface-3); border: 1px solid var(--line);
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink);
+}
+.ob-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ob-option.ob-mode-card { flex-direction: column; align-items: flex-start; gap: 4px; min-height: 70px; padding: 10px 14px; }
+.ob-mode-title { display: flex; align-items: center; gap: 8px; width: 100%; }
+.ob-mode-title .ob-option-name { flex: 1; font-size: 14px; }
+.ob-mode-card .ob-option-sub { padding-left: 26px; line-height: 1.5; }
+.ob-code.codeblock { max-height: 210px; margin: 0; }
+.ob-note { margin: 0; font-size: 12.5px; line-height: 1.65; color: var(--ink-2); }
+.ob-option.ob-more-row { min-height: 50px; padding: 0 14px 0 10px; }
+.ob-more-row .ob-option-name { flex: 1; font-size: 13.5px; }
+.ob-more-icon { width: 30px; height: 30px; flex: none; display: grid; place-items: center; }
+.ob-more-go { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--accent-ink); white-space: nowrap; }
+.ob-error { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }

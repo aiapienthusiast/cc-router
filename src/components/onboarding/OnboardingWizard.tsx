@@ -19,6 +19,8 @@ import { AppearanceStep } from "./steps/AppearanceStep";
 import { TermsStep } from "./steps/TermsStep";
 import { SubscriptionStep } from "./steps/SubscriptionStep";
 import { ModelsStep } from "./steps/ModelsStep";
+import { ConnectStep } from "./steps/ConnectStep";
+import { ConnectOutcomeContext, type ClaudeOutcome } from "./connectOutcome";
 
 const TOTAL = ONBOARDING_STEPS.length;
 
@@ -33,6 +35,7 @@ function StepView({ step, wizard }: { step: OnboardingStep; wizard: Wizard }) {
     case "models":
       return <ModelsStep wizard={wizard} />;
     case "connect":
+      return <ConnectStep wizard={wizard} />;
     case "done":
       return null;
   }
@@ -55,6 +58,8 @@ export function OnboardingWizard() {
   const footerRef = useRef<StepFooter>(DEFAULT_FOOTER);
   const [meta, setMeta] = useState<Pick<StepFooter, "canNext" | "nextLabel">>(DEFAULT_FOOTER);
   const [busy, setBusy] = useState(false);
+  const [claude, setClaude] = useState<ClaudeOutcome>(null);
+  const outcome = useMemo(() => ({ claude, setClaude }), [claude]);
   const setFooter = useCallback((f: StepFooter) => {
     footerRef.current = f;
     setMeta((m) => (m.canNext === f.canNext && m.nextLabel === f.nextLabel ? m : { canNext: f.canNext, nextLabel: f.nextLabel }));
@@ -156,7 +161,9 @@ export function OnboardingWizard() {
 
             <section className="ob-body" key={step}>
               <StepFooterContext.Provider value={setFooter}>
-                <StepView step={step} wizard={wizard} />
+                <ConnectOutcomeContext.Provider value={outcome}>
+                  <StepView step={step} wizard={wizard} />
+                </ConnectOutcomeContext.Provider>
               </StepFooterContext.Provider>
             </section>
           </div>
