@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowRight, Check, Info } from "lucide-react";
 import { useT } from "@/i18n";
@@ -13,7 +13,7 @@ import {
   stepIndex,
   type OnboardingStep,
 } from "@/lib/onboardingFlow";
-import { useDisclaimerAccepted, useWizard, type Wizard } from "./wizardStore";
+import { getWizardState, useDisclaimerAccepted, useWizard, type Wizard } from "./wizardStore";
 import { DEFAULT_FOOTER, StepFooterContext, type StepFooter } from "./stepFooter";
 import { AppearanceStep } from "./steps/AppearanceStep";
 import { TermsStep } from "./steps/TermsStep";
@@ -66,14 +66,16 @@ export function OnboardingWizard() {
     setMeta((m) => (m.canNext === f.canNext && m.nextLabel === f.nextLabel ? m : { canNext: f.canNext, nextLabel: f.nextLabel }));
   }, []);
 
-  const move = (to: OnboardingStep) => {
+  // 无论步骤因何改变 (翻页、步骤条、步骤内部直接 goTo), 都先清掉上一步的规则。
+  // layout effect 跑在新步骤的 passive effect 之前, 所以新步骤上报的规则不会被这里覆盖
+  useLayoutEffect(() => {
     footerRef.current = DEFAULT_FOOTER;
     setMeta(DEFAULT_FOOTER);
-    goTo(to);
-  };
+  }, [step]);
+
+  const move = (to: OnboardingStep) => goTo(to);
 
   const prev = prevStep(state);
-  const next = nextStep(state);
 
   async function handleNext() {
     if (busy || !meta.canNext) return;
@@ -88,7 +90,9 @@ export function OnboardingWizard() {
       }
       if (!ok) return;
     }
-    if (next) move(next);
+    // onNext 可能改了进度 (如第 3 步把来源改成本窗口), 按最新值决定去哪一步
+    const target = nextStep(getWizardState());
+    if (target) move(target);
   }
 
   const sub = subs.data?.find((s) => s.id === state.subscriptionId);

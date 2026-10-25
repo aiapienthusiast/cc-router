@@ -10,11 +10,15 @@ export interface StepFooter {
   nextLabel?: string;
 }
 
-export const DEFAULT_FOOTER: StepFooter = { canNext: true };
+/** 换步骤时先回到「不能下一步」, 直到新步骤上报自己的规则 —— 绝不沿用上一步的 onNext。 */
+export const DEFAULT_FOOTER: StepFooter = { canNext: false };
 
 export const StepFooterContext = createContext<(f: StepFooter) => void>(() => {});
 
-/** 每次渲染都上报一次; 外壳只在 canNext / nextLabel 变化时重渲染, onNext 走 ref 取最新的闭包。 */
+/**
+ * 每个步骤都必须调用 (不需要校验的步骤传 `{ canNext: true }`)。
+ * 每次渲染都上报一次; 外壳只在 canNext / nextLabel 变化时重渲染, onNext 走 ref 取最新的闭包。
+ */
 export function useStepFooter(footer: StepFooter) {
   const set = useContext(StepFooterContext);
   useEffect(() => {

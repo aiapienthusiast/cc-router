@@ -12,6 +12,7 @@ import { THEMES } from "@/themes";
 import type { UpdateSource } from "@/types";
 import type { SettingsForm } from "./useSettingsForm";
 import { useWizard } from "@/components/onboarding/wizardStore";
+import { useOnboardingState } from "@/components/onboarding/useOnboardingState";
 
 const COLOR_MODES: readonly ColorMode[] = ["system", "light", "dark"];
 
@@ -20,6 +21,7 @@ export function GeneralTab({ form }: { form: SettingsForm }) {
   const { t } = useT();
   const { mode, setMode, themeId, setThemeId } = useTheme();
   const wizard = useWizard();
+  const onboarding = useOnboardingState();
 
   return (
     <>
@@ -58,7 +60,8 @@ export function GeneralTab({ form }: { form: SettingsForm }) {
               type="button"
               className="btn sm"
               onClick={() => {
-                wizard.reset();
+                // 还没走完: 接着上次的进度 (清掉会丢下窗口建的订阅); 已完成: 从头再走一遍
+                if (onboarding.data?.completed) wizard.reset();
                 wizard.reopen();
               }}
             >

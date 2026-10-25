@@ -53,6 +53,11 @@ function updateWizard(p: Partial<WizardPersisted>) {
   writeState({ ...readState(), ...p });
 }
 
+/** 当前进度 (非 hook): 异步回调结束后要读最新值时用, 渲染时的 state 可能已过期。 */
+export function getWizardState(): WizardPersisted {
+  return readState();
+}
+
 /** 给窗口之外的页面用 (完整添加页保存 / 导入之后): 跳到指定步骤并重新显示窗口。 */
 export function resumeWizardAt(step: OnboardingStep, p: Partial<WizardPersisted>) {
   writeState({ ...readState(), ...p, step, dismissed: false });

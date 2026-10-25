@@ -35,7 +35,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const {
   DEFAULT_WIZARD, parseWizardState, nextStep, prevStep, canSkip, isWizardVisible,
-  canDiscardSubscription, providerEntry, inlineEndpoints,
+  canDiscardSubscription, providerEntry, inlineEndpoints, filledTierCount, isLocale,
 } = await import(pathToFileURL(`${SRC}lib/onboardingFlow.ts`).href);
 
 // ---- 进度存档 ----
@@ -86,14 +86,25 @@ check("hidden on full add page", vis({ pathname: "/subscriptions/new" }) === fal
 check("hidden on full add page even if reopened", vis({ pathname: "/subscriptions/new", reopened: true }) === false);
 
 // ---- 订阅清理 ----
-const pending = { fable: "(pending)", opus: "(pending)", sonnet: "(pending)", haiku: "(pending)" };
-check("discard own pending", canDiscardSubscription({ source: "wizard", slots: pending }) === true);
+// 本窗口建的、还没在第 4 步「下一步」确认的订阅可以删 (测试连接会先写真实槽位, 所以不能按槽位判断)
+check("discard own unconfirmed", canDiscardSubscription({ source: "wizard", confirmed: false }) === true);
+check("keep own confirmed", canDiscardSubscription({ source: "wizard", confirmed: true }) === false);
+check("keep page-created", canDiscardSubscription({ source: "page", confirmed: false }) === false);
+check("keep imported", canDiscardSubscription({ source: "import", confirmed: false }) === false);
+check("keep unknown source", canDiscardSubscription({ source: null, confirmed: false }) === false);
 check(
-  "keep own configured",
-  canDiscardSubscription({ source: "wizard", slots: { ...pending, opus: "m" } }) === false,
+  "confirmed round trips and defaults false",
+  parseWizardState(JSON.stringify({ ...saved, confirmed: true })).confirmed === true &&
+    parseWizardState(JSON.stringify(saved)).confirmed === false,
 );
-check("keep page-created", canDiscardSubscription({ source: "page", slots: pending }) === false);
-check("keep imported", canDiscardSubscription({ source: "import", slots: pending }) === false);
+
+// ---- 完成页摘要 ----
+const pending = { fable: "(pending)", opus: "(pending)", sonnet: "(pending)", haiku: "(pending)" };
+check("pending tiers are not counted", filledTierCount(pending) === 0);
+check("empty tiers are not counted", filledTierCount({ fable: "m", opus: " ", sonnet: "", haiku: "(pending)" }) === 1);
+check("all tiers counted", filledTierCount({ fable: "a", opus: "b", sonnet: "c", haiku: "d" }) === 4);
+check("known locales", ["zh", "zh-Hant", "en", "ja"].every(isLocale));
+check("unknown language values", !isLocale("fr") && !isLocale("system") && !isLocale(undefined));
 
 // ---- 厂商入口 ----
 const ep = (id, protocol = "messages") => ({

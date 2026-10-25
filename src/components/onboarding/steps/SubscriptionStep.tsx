@@ -68,7 +68,7 @@ export function SubscriptionStep({ wizard }: { wizard: Wizard }) {
     if (p === CUSTOM || providerEntry(p) === "page") {
       // 改去完整添加页: 本窗口刚建、还没选模型的订阅就没用了, 先删掉免得留下 (pending) 订阅
       const existing = subs.data?.find((s) => s.id === state.subscriptionId);
-      if (existing && canDiscardSubscription({ source: state.source, slots: existing.model_slots })) {
+      if (existing && canDiscardSubscription({ source: state.source, confirmed: state.confirmed })) {
         try {
           await deleteMut.mutateAsync(existing.id);
           draft.fingerprint = "";
@@ -124,7 +124,7 @@ export function SubscriptionStep({ wizard }: { wizard: Wizard }) {
     if (existing && state.source === "wizard" && draft.fingerprint === fingerprint) return true;
     setError(null);
     try {
-      if (existing && canDiscardSubscription({ source: state.source, slots: existing.model_slots })) {
+      if (existing && canDiscardSubscription({ source: state.source, confirmed: state.confirmed })) {
         await deleteMut.mutateAsync(existing.id);
       }
       const created = await createMut.mutateAsync({
@@ -135,7 +135,7 @@ export function SubscriptionStep({ wizard }: { wizard: Wizard }) {
         source: { kind: "from_template", provider_id: provider.id, endpoint_id: endpoint.id, url_params: params },
       });
       draft.fingerprint = fingerprint;
-      patch({ subscriptionId: created.id, source: "wizard", importedCount: null });
+      patch({ subscriptionId: created.id, source: "wizard", importedCount: null, confirmed: false });
       return true;
     } catch (e) {
       setError(errorText(e));
@@ -145,10 +145,20 @@ export function SubscriptionStep({ wizard }: { wizard: Wizard }) {
 
   useStepFooter({ canNext: !!provider && !!endpoint && apiKey.trim() !== "", onNext });
 
-  function onImported(report: ImportReport) {
+  async function onImported(report: ImportReport) {
     if (report.imported <= 0) return;
+    // 备份里已有订阅与绑定: 本窗口刚建、还没确认的订阅就多余了
+    const existing = subs.data?.find((x) => x.id === state.subscriptionId);
+    if (existing && canDiscardSubscription({ source: state.source, confirmed: state.confirmed })) {
+      try {
+        await deleteMut.mutateAsync(existing.id);
+      } catch {
+        // 删不掉不影响导入结果, 用户可以在订阅页手动删
+      }
+    }
+    draft.fingerprint = "";
     setImported(true);
-    patch({ source: "import", importedCount: report.imported, subscriptionId: null });
+    patch({ source: "import", importedCount: report.imported, subscriptionId: null, confirmed: false });
   }
 
   return (
@@ -270,7 +280,7 @@ export function SubscriptionStep({ wizard }: { wizard: Wizard }) {
           // 关掉导入报告之后才前进, 让用户先看清哪些订阅被停用 / 跳过
           if (!v && imported) goTo("connect");
         }}
-        onImported={onImported}
+        onImported={(r) => void onImported(r)}
       />
     </div>
   );

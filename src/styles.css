@@ -472,6 +472,8 @@ html[data-platform="web"] { --titlebar-inset: 0px; }
   display: flex;
   justify-content: flex-end;
   z-index: 20;
+  /* 模态弹窗 (Radix) 打开时会给 body 设 pointer-events: none; 拖窗带与窗口三键必须照常可用 */
+  pointer-events: auto;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -3772,11 +3774,12 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 
 /* === 首次启动引导窗口 (spec 2026-10-25-onboarding-wizard, 数值以设计稿为准) ===
  * 放大的 .rn: 顶部步骤条 / 左栏说明 + 右栏操作 / 底栏翻页。选中态统一 = 墨线加粗 + 错位色块 */
-.ob-overlay { position: fixed; inset: 0; z-index: 50; animation: rn-fade 0.18s ease-out; }
+/* 遮罩与窗口都让出顶部拖窗带: 首次启动时用户必须还能拖动、最小化、关闭窗口 (Windows / Linux 的三键是自绘的) */
+.ob-overlay { position: fixed; inset: var(--titlebar-inset) 0 0 0; z-index: 50; animation: rn-fade 0.18s ease-out; }
 .ob {
-  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 50;
+  position: fixed; left: 50%; top: calc(50% + var(--titlebar-inset) / 2); transform: translate(-50%, -50%); z-index: 50;
   width: min(940px, calc(100vw - 48px));
-  height: min(628px, calc(100vh - 48px));
+  height: min(628px, calc(100vh - 48px - var(--titlebar-inset)));
   display: flex; flex-direction: column;
   background: var(--surface);
   border: 2px solid var(--stroke);

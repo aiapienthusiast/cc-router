@@ -7,6 +7,7 @@ import { useTheme, type ColorMode } from "@/hooks/useTheme";
 import { THEMES, DEFAULT_THEME_ID, type ThemeId } from "@/themes";
 import type { Settings } from "@/types";
 import type { Wizard } from "../wizardStore";
+import { useStepFooter } from "../stepFooter";
 
 /** 语言名与示例句用该语言本身写, 不随界面语言翻译 (同设置页的语言下拉)。 */
 export const NATIVE: Record<Locale, { name: string; sample: string; tag: string }> = {
@@ -26,6 +27,7 @@ export function AppearanceStep(_: { wizard: Wizard }) {
   const { mode, setMode, themeId, setThemeId } = useTheme();
   const pref: LanguagePref = settings.data?.preferred_language ?? "system";
   const system = detectSystemLocale();
+  useStepFooter({ canNext: true });
 
   async function pickLang(next: LanguagePref) {
     if (next === pref) return;

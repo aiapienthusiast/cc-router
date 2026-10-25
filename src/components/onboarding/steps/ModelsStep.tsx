@@ -32,7 +32,7 @@ export function ModelsStep({ wizard }: { wizard: Wizard }) {
   const providers = useProviders();
   const vms = useVirtualModels();
   const updateMut = useUpdateSubscription();
-  const { state, goTo } = wizard;
+  const { state, goTo, patch } = wizard;
   const sub = subs.data?.find((s) => s.id === state.subscriptionId);
   const provider = providers.data?.find((p) => p.id === sub?.provider_id);
   const exampleModels = provider?.model_discovery.example_models ?? [];
@@ -102,6 +102,8 @@ export function ModelsStep({ wizard }: { wizard: Wizard }) {
     }
     if (!(await save())) return false;
     await bindToConversationVirtualModels(state.subscriptionId, sub?.endpoint_protocol ?? "messages", vms.data);
+    // 定稿: 之后退回第 3 步换连接信息也不会再删它
+    patch({ confirmed: true });
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["virtual-models"] }),
       qc.invalidateQueries({ queryKey: ["subscriptions"] }),

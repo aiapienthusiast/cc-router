@@ -19,6 +19,7 @@ import { CLAUDE_CODE_SETTINGS_KEY, useApplyClaudeCodeSettings } from "@/hooks/us
 import { CopyableBlock } from "@/components/CopyableBlock";
 import type { Wizard } from "../wizardStore";
 import { useConnectOutcome } from "../connectOutcome";
+import { useStepFooter } from "../stepFooter";
 
 type ToolTab = "generic" | "claude-code" | "codex" | "more";
 
@@ -48,6 +49,7 @@ function maskToken(tok: string): string {
 export function ConnectStep({ wizard }: { wizard: Wizard }) {
   const { t } = useT();
   const [tab, setTab] = useState<ToolTab>("generic");
+  useStepFooter({ canNext: true });
   const { port, baseUrl, token } = useProxyEndpoint();
   // 与接入指南同一兜底: base_url 未到时按设置的端口拼, 与 Rust local_base_url 同语义
   const base = baseUrl ?? `http://127.0.0.1:${port}`;
@@ -77,7 +79,7 @@ export function ConnectStep({ wizard }: { wizard: Wizard }) {
         ))}
       </div>
       {tab === "generic" && <GenericPanel base={base} token={token} />}
-      {tab === "claude-code" && <ClaudePanel base={base} token={token} />}
+      {tab === "claude-code" && <ClaudePanel base={base} token={token} wizard={wizard} />}
       {tab === "codex" && <CodexPanel base={base} token={token} />}
       {tab === "more" && <MorePanel wizard={wizard} />}
     </div>
@@ -132,7 +134,7 @@ function GenericPanel({ base, token }: { base: string; token: string }) {
   );
 }
 
-function ClaudePanel({ base, token }: { base: string; token: string }) {
+function ClaudePanel({ base, token, wizard }: { base: string; token: string; wizard: Wizard }) {
   const { t } = useT();
   const qc = useQueryClient();
   const apply = useApplyClaudeCodeSettings();
@@ -236,7 +238,15 @@ function ClaudePanel({ base, token }: { base: string; token: string }) {
         <p className="ob-error" role="alert">
           <CircleAlert size={13} /> {error.text}{" "}
           {error.invalidJson && (
-            <button type="button" className="ob-link" onClick={() => navigate("/guide?tab=claude-code")}>
+            <button
+              type="button"
+              className="ob-link"
+              onClick={() => {
+                // 编辑器在接入指南页: 窗口先收起, 否则页面换在窗口背后看不见
+                wizard.dismiss();
+                navigate("/guide?tab=claude-code");
+              }}
+            >
               {t("onboarding.wizard.connect.claude.openEditor")}
             </button>
           )}

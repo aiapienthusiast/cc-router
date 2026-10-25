@@ -6,7 +6,7 @@ import { api } from "@/api/tauri";
 import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { errorText } from "@/lib/errorText";
-import { MODEL_SLOT_KEYS } from "@/lib/modelSlots";
+import { filledTierCount, isLocale } from "@/lib/onboardingFlow";
 import { providerName } from "@/lib/providerText";
 import { useSettings } from "@/hooks/useSettings";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
@@ -53,19 +53,18 @@ export function DoneStep({ wizard }: { wizard: Wizard }) {
 
   useStepFooter({ canNext: true, nextLabel: t("onboarding.wizard.finish"), onNext: finish });
 
-  const pref = settings.data?.preferred_language ?? "system";
-  const langValue =
-    pref === "system"
-      ? `${t("onboarding.wizard.appearance.followSystem")} · ${NATIVE[locale].name}`
-      : NATIVE[pref].name;
+  // 只有显式选了四种语言之一才显示该语言; system 与未知值 (手改配置等) 都按「跟随系统」显示当前语言
+  const pref = settings.data?.preferred_language;
+  const langValue = isLocale(pref)
+    ? NATIVE[pref].name
+    : `${t("onboarding.wizard.appearance.followSystem")} · ${NATIVE[locale].name}`;
 
   const sub = subs.data?.find((s) => s.id === state.subscriptionId);
   let subValue: string | null = null;
   if (state.source === "import" && state.importedCount) {
     subValue = t("onboarding.wizard.done.imported", { n: state.importedCount });
   } else if (sub) {
-    const tiers = MODEL_SLOT_KEYS.filter((k) => sub.model_slots[k].trim() !== "").length;
-    subValue = `${providerName(sub, locale)} · ${t("onboarding.wizard.done.tiers", { n: tiers })}`;
+    subValue = `${providerName(sub, locale)} · ${t("onboarding.wizard.done.tiers", { n: filledTierCount(sub.model_slots) })}`;
   }
 
   const toolValue =
