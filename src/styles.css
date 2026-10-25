@@ -3404,8 +3404,8 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .vrm-model.none { font-weight: 400; color: var(--ink-4); }
 .vrm-row-label { margin-top: 2px; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vrm-tag { flex-shrink: 0; padding: 1px 8px; font-size: 11px; border-radius: 9px; white-space: nowrap; }
-/* 陶土色底配墨色字, 同 .btn.primary (白字压陶土色对比不够) */
-.vrm-tag.first { background: var(--accent); color: #141413; font-weight: 600; }
+/* 浅底配加深的强调字, 同 .vm-summary.first: 各主题的 --accent 深浅不一 (win2k 是深海军蓝), 实色底配固定字色会失读 */
+.vrm-tag.first { background: var(--accent-bg); color: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent-line) inset; font-weight: 600; }
 .vrm-tag.backup,
 .vrm-tag.off { background: var(--surface-3); color: var(--ink-3); }
 .vrm-tag.rr,
@@ -3542,6 +3542,7 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .vm-summary.first { background: var(--accent-bg); color: var(--accent-ink); }
 .vm-summary.pool { background: var(--ok-bg); color: var(--ok); }
 .vm-summary.none { background: var(--err-bg); color: var(--err); }
+.vm-summary.empty { background: var(--surface-3); color: var(--ink-3); }
 .vm-gap {
   margin-bottom: 12px;
   padding: 6px 12px;

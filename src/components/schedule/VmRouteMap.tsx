@@ -2,12 +2,19 @@ import { Fragment, type CSSProperties } from "react";
 import {
   DndContext,
   closestCenter,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Link } from "react-router";
 import { GripVertical, Plus, X } from "lucide-react";
@@ -120,7 +127,11 @@ export function VmRouteMap({ vm, data, at, colors, onReorder, onRemove, onAdd }:
   const { t } = useT();
   const slot = vmNameToSlot(vm.name);
   const timed = slot !== null;
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // 拖动手柄是按钮: 聚焦后 Space 拾起、上下方向键移动、Space 放下
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // 纵向排布: 每组高 = 行数 × ROW_H, 组间 GAP, 列底是「添加订阅」
   const layout: { top: number; h: number }[] = [];

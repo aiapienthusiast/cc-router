@@ -1243,6 +1243,7 @@
   "schedule.map.summary.rr": "此刻 {n} 家轮询",
   "schedule.map.summary.sticky": "此刻 {n} 家可用 · 每个会话固定一家",
   "schedule.map.summary.none": "此刻没有可用订阅 · 请求会 503",
+  "schedule.map.summary.unbound": "还没有绑定订阅",
   "schedule.map.gap": "一周里有 {n} 小时没有任何订阅可用（例如 {example}），这些时间里的 {vm} 请求会返回 503。",
   "schedule.map.legend.aria": "图例",
   "schedule.map.legend.first": "此刻首选",

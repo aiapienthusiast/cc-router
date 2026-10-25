@@ -1243,6 +1243,7 @@
   "schedule.map.summary.rr": "現在 {n} 件でラウンドロビン",
   "schedule.map.summary.sticky": "現在 {n} 件が利用可能 · セッションごとに 1 件に固定",
   "schedule.map.summary.none": "現在利用可能なサブスクリプションなし · リクエストは 503",
+  "schedule.map.summary.unbound": "まだサブスクが紐付けられていません",
   "schedule.map.gap": "1 週間のうち {n} 時間は利用可能なサブスクリプションがありません（例：{example}）。その時間帯の {vm} リクエストは 503 を返します。",
   "schedule.map.legend.aria": "凡例",
   "schedule.map.legend.first": "現在の第一候補",

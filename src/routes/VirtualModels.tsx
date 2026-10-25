@@ -19,7 +19,7 @@ import { useProxyStatus } from "@/hooks/useSettings";
 import { useVirtualModels, useUpdateVirtualModel } from "@/hooks/useVirtualModels";
 import { isAnthropicPassthrough } from "@/lib/authTypes";
 import type { ModelColor } from "@/lib/modelColor";
-import { hhmm, type WallClock } from "@/lib/slotSchedule";
+import { hhmm, isNowSelection, type WallClock } from "@/lib/slotSchedule";
 import { slotNow, slotNowText } from "@/lib/slotNow";
 import { customProviderLabel } from "@/lib/providerLabels";
 import { providerName as localProviderName } from "@/lib/providerText";
@@ -43,7 +43,7 @@ export function VirtualModelsPage() {
   const clock = useHostClock();
   // null = 跟随宿主机此刻; 选过星期 / 滑块后固定在所选时刻
   const [selected, setSelected] = useState<WallClock | null>(null);
-  const isNow = selected === null;
+  const isNow = isNowSelection(selected, clock ?? null);
   const base = selected ?? clock;
   const weekday = base?.weekday;
   const minute = base?.minute;
@@ -58,6 +58,8 @@ export function VirtualModelsPage() {
     subs.data?.forEach((s) => m.set(s.id, s));
     return m;
   }, [subs.data]);
+  // 订阅列表没到时 subsMap 为空, 此时建图会把每个模型都画成「没有可用订阅」: 当作加载中
+  const subsReady = subs.data !== undefined;
 
   const orderedVms = useMemo<VirtualModelDto[]>(
     () =>
@@ -85,7 +87,7 @@ export function VirtualModelsPage() {
             vm={vm}
             subsMap={subsMap}
             allSubs={subs.data ?? []}
-            at={at}
+            at={subsReady ? at : null}
             isNow={isNow}
             colors={colors}
           />
@@ -134,7 +136,7 @@ function VirtualModelCard({
   vm: VirtualModelDto;
   subsMap: Map<string, SubscriptionDto>;
   allSubs: SubscriptionDto[];
-  /** 所选时刻; null = 宿主机时钟还没取到 */
+  /** 所选时刻; null = 宿主机时钟或订阅列表还没取到 (显示加载中) */
   at: WallClock | null;
   isNow: boolean;
   colors: Map<string, ModelColor>;
@@ -172,7 +174,17 @@ function VirtualModelCard({
   // 图数据只算一次: 头部摘要 / 缺口提示与路由图共用
   const data = useMemo(() => (at ? buildRouteMap(vm, subsMap, at, isNow) : null), [vm, subsMap, at, isNow]);
   const cardClass = jev ? "slot-card wide jev" : isFallback ? "slot-card wide" : "slot-card";
-  const summaryTone = !data ? "" : data.summary.kind === "none" ? "none" : data.summary.kind === "first" ? "first" : "pool";
+  // 还没绑任何订阅是待配置而非故障: 中性提示, 不报红 / 不提 503 缺口
+  const unbound = vm.subscription_ids.length === 0;
+  const summaryTone = !data
+    ? ""
+    : unbound
+      ? "empty"
+      : data.summary.kind === "none"
+        ? "none"
+        : data.summary.kind === "first"
+          ? "first"
+          : "pool";
 
   return (
     <div className={cardClass}>
@@ -205,10 +217,14 @@ function VirtualModelCard({
             </button>
           ))}
         </div>
-        {data && <span className={`vm-summary ${summaryTone}`}>{summaryText(data.summary, t)}</span>}
+        {data && (
+          <span className={`vm-summary ${summaryTone}`}>
+            {unbound ? t("schedule.map.summary.unbound") : summaryText(data.summary, t)}
+          </span>
+        )}
       </div>
 
-      {data && data.gapHours > 0 && data.firstGap && (
+      {data && !unbound && data.gapHours > 0 && data.firstGap && (
         <div className="vm-gap">
           {t("schedule.map.gap", { n: data.gapHours, example: gapExample(data.firstGap, t), vm: vm.name })}
         </div>

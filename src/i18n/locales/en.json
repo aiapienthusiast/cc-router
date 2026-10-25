@@ -1243,6 +1243,7 @@
   "schedule.map.summary.rr": "Now: {n} in rotation",
   "schedule.map.summary.sticky": "Now: {n} available · each session sticks to one",
   "schedule.map.summary.none": "No subscription available now · requests get 503",
+  "schedule.map.summary.unbound": "No subscriptions bound yet",
   "schedule.map.gap": "For {n} h a week no subscription is available (e.g. {example}); {vm} requests during those times return 503.",
   "schedule.map.legend.aria": "Legend",
   "schedule.map.legend.first": "First choice now",

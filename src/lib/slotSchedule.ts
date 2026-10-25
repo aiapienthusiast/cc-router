@@ -10,6 +10,16 @@ export interface WallClock {
   minute: number;
 }
 
+/**
+ * 虚拟模型页「现在」的判定: 没有固定选择 (跟随宿主机) 或所选星期与半小时格恰好等于宿主机此刻。
+ * 点了已高亮的星期、拖到当前格, 都仍算「现在」(此时才会叠加冷却 / 限流 / 限额的瞬时状态)。
+ */
+export function isNowSelection(selected: WallClock | null, host: WallClock | null): boolean {
+  if (selected === null) return true;
+  if (host === null) return false;
+  return selected.weekday === host.weekday && Math.floor(selected.minute / 30) === Math.floor(host.minute / 30);
+}
+
 const MINUTES_PER_DAY = 1440;
 export const MAX_RULES_PER_SLOT = 16;
 /** 一周的半小时格数 (7 × 48)。 */

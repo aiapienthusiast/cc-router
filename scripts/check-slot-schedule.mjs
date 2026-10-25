@@ -38,7 +38,7 @@ const readJson = (rel) => JSON.parse(readFileSync(ROOT + rel, "utf8"));
 
 const {
   effectiveModel, clockAt, weekCells, groupDayTypes, runs, weeklyHours, ruleIssues, validateRules, HALF_HOURS,
-  dayPreset, DAY_PRESETS, crossesMidnight, normalizeSchedules, schedulesEqual,
+  dayPreset, DAY_PRESETS, crossesMidnight, normalizeSchedules, schedulesEqual, isNowSelection,
 } = await import("../src/lib/slotSchedule.ts");
 const { modelColor, assignModelColors } = await import("../src/lib/modelColor.ts");
 
@@ -136,6 +136,16 @@ check("色条不混墨色", [...assigned.values(), c1].every((c) => /^var\(--fil
     const n = css.split(`${token}:`).length - 1;
     check(`${token} 亮 / 暗主题各定义一次`, n === 2, `实际 ${n}`);
   }
+}
+
+// ---- 2a. 虚拟模型页「现在」判定: 没有固定选择, 或所选恰为宿主机此刻所在半小时格 ----
+{
+  const host = { weekday: 3, minute: 614 };
+  check("现在: 无选择即现在", isNowSelection(null, host) && isNowSelection(null, null));
+  check("现在: 选了同星期同半小时格 (如点已高亮的星期) 仍是现在", isNowSelection({ weekday: 3, minute: 600 }, host));
+  check("现在: 同星期不同半小时格不是", !isNowSelection({ weekday: 3, minute: 630 }, host));
+  check("现在: 同半小时格不同星期不是", !isNowSelection({ weekday: 4, minute: 600 }, host));
+  check("现在: 宿主机时钟未取到时固定选择不算现在", !isNowSelection({ weekday: 3, minute: 600 }, null));
 }
 
 // ---- 2b. 此刻生效模型 (列表 / 实时路由) ----

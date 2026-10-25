@@ -1243,6 +1243,7 @@
   "schedule.map.summary.rr": "此刻 {n} 家輪詢",
   "schedule.map.summary.sticky": "此刻 {n} 家可用 · 每個工作階段固定一家",
   "schedule.map.summary.none": "此刻沒有可用訂閱 · 請求會回傳 503",
+  "schedule.map.summary.unbound": "還沒有綁定訂閱",
   "schedule.map.gap": "一週裡有 {n} 小時沒有任何訂閱可用（例如 {example}），這些時間裡的 {vm} 請求會回傳 503。",
   "schedule.map.legend.aria": "圖例",
   "schedule.map.legend.first": "此刻首選",
