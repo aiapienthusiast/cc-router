@@ -231,6 +231,134 @@ check("列表外: 在列表里不算", !outsideModelList("a", ["a", "b"]));
 check("列表外: 空值不算", !outsideModelList("", ["a"]));
 check("列表外: 没有模型列表时不提示", !outsideModelList("x", []));
 
+// ---- 2d. 虚拟模型页路由图 (第二版): 订阅 → 每条规则一行 + 收尾行, 线条随所选时刻 ----
+{
+  const { buildRouteMap } = await import("../src/components/schedule/routeMap.ts");
+  const WD = [1, 2, 3, 4, 5];
+  const qoderOpus = [R(WD, "08:00", "18:00", "deepseek-4.1"), R(WD, "18:00", "08:00", "qwen-max")];
+  const rq = SUB("qoder", {}, { opus: qoderOpus, haiku: [R(WD, "08:00", "18:00", "qoder-DeepSeek-Flash")] });
+  const rd = SUB("DeepSeek", {}, {
+    opus: [R(ALL, "00:30", "08:30", "deepseek-v4-pro")],
+    haiku: [R(ALL, "00:30", "08:30", "deepseek-v4-flash")],
+  });
+  const ra = SUB("Aiberm", { opus: "gpt-6.1-sol" });
+  const rc = SUB("cool", { opus: "z-model" }, {}, { state: "transient_error" });
+  const rOff = SUB("off", { opus: "x-model" }, {}, { enabled: false });
+  const rmap = new Map([rq, rd, ra, rc, rOff].map((s) => [s.id, s]));
+  const wed10 = { weekday: 3, minute: 600 };
+  const activeRow = (g) => g.rows.find((r) => r.active);
+  const opusSeq = VM(["qoder", "DeepSeek", "Aiberm"]);
+
+  const m1 = buildRouteMap(opusSeq, rmap, wed10, true);
+  const [gq, gd, ga] = m1.groups;
+  check("路由图: 每个绑定订阅一组, 按绑定顺序", same(m1.groups.map((g) => g.sub.id), ["qoder", "DeepSeek", "Aiberm"]));
+  check("路由图: qoder 两条规则 + 收尾「其余时间 · 不参与」",
+    same(gq.rows.map((r) => [r.kind, r.model]), [["rule", "deepseek-4.1"], ["rule", "qwen-max"], ["restOff", null]]));
+  check("路由图: 规则行标签与星期", same(gq.rows[0].label, { key: "schedule.map.rule", params: { start: "08:00", end: "18:00" } })
+    && same(gq.rows[1].label, { key: "schedule.map.ruleNextDay", params: { start: "18:00", end: "08:00" } })
+    && same(gq.rows[0].days, WD) && gq.rows[2].days === null);
+  check("路由图: 周三 10:00 qoder 首选 deepseek-4.1",
+    gq.rank === "first" && activeRow(gq).model === "deepseek-4.1" && activeRow(gq).tag === "first");
+  check("路由图: 每组只有一行命中, 未命中行无标记", m1.groups.every((g) => g.rows.filter((r) => r.active).length === 1
+    && g.rows.every((r) => r.active || r.tag === null)));
+  check("路由图: DeepSeek 命中「其余时间 · 不参与」", activeRow(gd).kind === "restOff" && gd.rank === null && activeRow(gd).tag === "off");
+  check("路由图: Aiberm 全天行, 备选", same(ga.rows.map((r) => r.kind), ["all"]) && ga.rank === "backup"
+    && activeRow(ga).tag === "backup" && same(ga.rows[0].days, ALL));
+  check("路由图: 顺序摘要", same(m1.summary, { kind: "first", sub: "qoder", model: "deepseek-4.1" }), JSON.stringify(m1.summary));
+
+  const sat0730 = buildRouteMap(opusSeq, rmap, { weekday: 6, minute: 450 }, false).groups[0];
+  check("路由图: 周六 07:30 qoder 命中周五夜跨来的规则", activeRow(sat0730) === sat0730.rows[1]);
+  const sat0800 = buildRouteMap(opusSeq, rmap, { weekday: 6, minute: 480 }, false).groups[0];
+  check("路由图: 周六 08:00 qoder 不参与", activeRow(sat0800).kind === "restOff" && sat0800.rank === null);
+
+  const segOn = (wd) => buildRouteMap(opusSeq, rmap, { weekday: wd, minute: 600 }, false).groups[0].rows[1].segments;
+  check("路由图: qwen-max 周六时间条", same(segOn(6), [{ from: 0, to: 16 }]), JSON.stringify(segOn(6)));
+  check("路由图: qwen-max 周一时间条", same(segOn(1), [{ from: 36, to: 48 }]), JSON.stringify(segOn(1)));
+  check("路由图: 收尾行时间条 = 规则都不命中的时段",
+    same(buildRouteMap(opusSeq, rmap, wed10, false).groups[1].rows[1].segments, [{ from: 0, to: 1 }, { from: 17, to: 48 }]));
+  check("路由图: 全天行时间条", same(ga.rows[0].segments, [{ from: 0, to: 48 }]));
+  check("路由图: 空槽位一行「不会被调用」", same(buildRouteMap(VM(["qoder"], "sequential", "model-sonnet"), rmap, wed10, false)
+    .groups[0].rows.map((r) => [r.kind, r.model, r.label.key]), [["empty", null, "schedule.map.empty"]]));
+  {
+    const withDef = SUB("wd", { opus: "base" }, { opus: [qoderOpus[0]] });
+    const g = buildRouteMap(VM(["wd"]), new Map([["wd", withDef]]), { weekday: 7, minute: 600 }, false).groups[0];
+    check("路由图: 有规则有默认时收尾「其余时间」+ 默认模型",
+      same(g.rows[1], { ...g.rows[1], kind: "rest", model: "base", active: true, tag: "first", days: null }));
+  }
+  // 命中行与求值函数在一周每个半小时格都一致 (不是第三份求值)
+  {
+    let agree = true;
+    for (let i = 0; i < HALF_HOURS && agree; i++) {
+      const at = clockAt(i);
+      buildRouteMap(VM(["qoder", "DeepSeek", "Aiberm"], "sequential", "model-haiku"), rmap, at, false).groups.forEach((g) => {
+        if ((activeRow(g)?.model ?? null) !== slotModelAt(g.sub, "haiku", at)) agree = false;
+      });
+    }
+    check("路由图: 命中行模型与 slotModelAt 逐格一致", agree);
+  }
+
+  const coolVm = VM(["cool", "Aiberm"]);
+  const cNow = buildRouteMap(coolVm, rmap, wed10, true);
+  check("路由图: 现在时刻冷却订阅被跳过", cNow.groups[0].skipped === "cooldown" && cNow.groups[0].rank === null
+    && activeRow(cNow.groups[0]).tag === "skipped" && cNow.groups[1].rank === "first" && cNow.summary.sub === "Aiberm");
+  const cLater = buildRouteMap(coolVm, rmap, wed10, false);
+  check("路由图: 别的时刻冷却不影响", cLater.groups[0].skipped === null && cLater.groups[0].rank === "first"
+    && cLater.groups[1].rank === "backup");
+  {
+    const rl = SUB("rl", { opus: "m" }, {}, { state: "rate_limited" });
+    const full = SUB("full", { opus: "m" }, {}, { is_dispatchable: false });
+    const mm = new Map([rl, full].map((s) => [s.id, s]));
+    check("路由图: 限流 / 限额已满的跳过原因",
+      same(buildRouteMap(VM(["rl", "full"]), mm, wed10, true).groups.map((g) => g.skipped), ["rate_limited", "quota"]));
+  }
+  const offMap = buildRouteMap(VM(["off", "Aiberm"]), rmap, wed10, false);
+  check("路由图: 停用订阅全周不参与", offMap.groups[0].rank === null && offMap.groups[0].skipped === null
+    && activeRow(offMap.groups[0]).tag === "off" && offMap.groups[1].rank === "first");
+  check("路由图: 缺失的订阅不画", buildRouteMap(VM(["ghost", "Aiberm"]), rmap, wed10, false).groups.length === 1);
+
+  const rr = buildRouteMap(VM(["qoder", "DeepSeek", "Aiberm"], "round_robin"), rmap, wed10, false);
+  check("路由图: 轮询下可用订阅都参与", same(rr.groups.map((g) => g.rank), ["join", null, "join"])
+    && activeRow(rr.groups[0]).tag === "rr" && activeRow(rr.groups[2]).tag === "rr");
+  check("路由图: 轮询摘要", same(rr.summary, { kind: "rr", n: 2 }), JSON.stringify(rr.summary));
+  const st = buildRouteMap(VM(["qoder", "Aiberm"], "sticky"), rmap, wed10, false);
+  check("路由图: 会话亲和", same(st.summary, { kind: "sticky", n: 2 }) && activeRow(st.groups[0]).tag === "sticky");
+  const none = buildRouteMap(VM(["DeepSeek"]), rmap, wed10, false);
+  check("路由图: 没有可用订阅", same(none.summary, { kind: "none" }));
+
+  const haiku = buildRouteMap(VM(["DeepSeek", "qoder"], "sequential", "model-haiku"), rmap, wed10, false);
+  check("路由图: haiku 一周缺口小时数", haiku.gapHours === 64.5, String(haiku.gapHours));
+  check("路由图: haiku 第一个缺口", same(haiku.firstGap, { weekday: 1, from: 0, to: 1 }), JSON.stringify(haiku.firstGap));
+  check("路由图: opus 例没有缺口", m1.gapHours === 0 && m1.firstGap === null);
+  check("路由图: 缺口不看瞬时状态", buildRouteMap(VM(["cool"]), rmap, wed10, true).gapHours === 0);
+  check("路由图: 周日夜不跨到周一, 缺口从周一 0 点起", same(buildRouteMap(VM(["qoder"]), rmap, wed10, false).firstGap, { weekday: 1, from: 0, to: 16 }));
+  {
+    const monAm = SUB("monAm", {}, { opus: [R([1], "00:00", "12:00", "m")] });
+    check("路由图: 缺口第一段截到当天结束",
+      same(buildRouteMap(VM(["monAm"]), new Map([["monAm", monAm]]), wed10, false).firstGap, { weekday: 1, from: 24, to: 48 }));
+  }
+
+  const fbSubs = new Map([
+    ["pass", SUB("pass", {}, {}, { auth_type: "api_key" })],
+    ["slotted", SUB("slotted", { fallback: " fb-model " }, {}, { auth_type: "openai_responses_api_key" })],
+    ["trans", SUB("trans", {}, {}, { auth_type: "gemini_api_key" })],
+  ]);
+  const fb = buildRouteMap(VM(["pass", "slotted", "trans"], "sequential", "model-fallback"), fbSubs, wed10, false);
+  check("路由图: fallback 每订阅一行 fixed、不画星期", fb.groups.every((g) => g.rows.length === 1 && g.rows[0].kind === "fixed"
+    && g.rows[0].days === null && g.rows[0].active && same(g.rows[0].segments, [{ from: 0, to: 48 }])));
+  check("路由图: fallback 透传 / 兜底槽 / 翻译类未配兜底槽被跳过",
+    same(fb.groups.map((g) => [g.rows[0].model, g.rank]), [[null, "first"], ["fb-model", "backup"], [null, null]]));
+  check("路由图: fallback 没有缺口概念", fb.gapHours === 0 && fb.firstGap === null);
+  check("路由图: fallback 摘要的透传模型为空", same(fb.summary, { kind: "first", sub: "pass" }), JSON.stringify(fb.summary));
+  const jevSubs = new Map([
+    ["j1", SUB("j1", { jev: "clef-pro" }, {}, { model_discovery: { example_models: [] } })],
+    ["j2", SUB("j2", {}, {}, { model_discovery: { example_models: ["ex-model"] } })],
+    ["j3", SUB("j3", {}, {}, { model_discovery: { example_models: [] } })],
+  ]);
+  const jv = buildRouteMap(VM(["j1", "j2", "j3"], "sequential", "model-jev"), jevSubs, wed10, false);
+  check("路由图: jev 行 Jev 槽 / 端点示例模型 / 透传",
+    same(jv.groups.map((g) => [g.rows[0].kind, g.rows[0].model, g.rows[0].days]), [["fixed", "clef-pro", null], ["fixed", "ex-model", null], ["fixed", null, null]]));
+}
+
 // ---- 3. 源码扫描: 不得用 new Date( 推算星期 / 时刻 ----
 const scan = [`${SRC}lib/slotSchedule.ts`, `${SRC}lib/slotNow.ts`];
 const walk = (dir) => {

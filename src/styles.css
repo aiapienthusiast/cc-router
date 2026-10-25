@@ -3551,6 +3551,159 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 }
 .sched-rn-status.rate_limited { color: var(--err); }
 
+/* 虚拟模型路由图 (第二版, VmRouteMap, 设计稿 VirtualModelsV2.dc.html): 1000 宽画布, 窄容器里横向滚动。
+ * 盒子位置由组件按行数排; 行的左条色 / 星期格底色由组件写进 --vrm-bar / --vrm-fill (只引用 --fill-*)。 */
+.vrm-wrap { overflow-x: auto; }
+.vrm { position: relative; }
+.vrm-edges { position: absolute; left: 0; top: 0; overflow: visible; }
+.vrm-edge {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke 0.15s, stroke-width 0.15s;
+}
+/* 虚拟模型 → 订阅按名次; 订阅 → 行只有命中行跟随名次, miss = 命中但此刻不用, idle = 未命中 */
+.vrm-edge.first { stroke: var(--accent); stroke-width: 3.2; }
+.vrm-edge.backup { stroke: var(--ink-2); stroke-width: 1.8; stroke-dasharray: 6 5; }
+.vrm-edge.join { stroke: var(--ink-2); stroke-width: 2.2; }
+.vrm-edge.off { stroke: var(--line-2); stroke-width: 1.6; stroke-dasharray: 3 5; }
+.vrm-edge.miss { stroke: var(--line-2); stroke-width: 1.4; stroke-dasharray: 3 4; }
+.vrm-edge.idle { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 2 5; }
+.vrm-col { position: absolute; top: 2px; font-size: 11.5px; color: var(--ink-4); white-space: nowrap; }
+.vrm-vm {
+  position: absolute;
+  left: 0;
+  box-sizing: border-box;
+  padding: 0 8px;
+  line-height: 48px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--accent-bg);
+  border: 2.2px solid var(--stroke);
+  border-radius: 12px 18px 14px 16px / 16px 12px 18px 14px;
+}
+.vrm-sub {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 2px;
+  font-size: 13px;
+  background: var(--surface);
+  border-radius: 12px 18px 14px 16px / 16px 12px 18px 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.vrm-sub.first { border: 2.2px solid var(--accent); box-shadow: 3px 3px 0 var(--accent-bg); }
+.vrm-sub.on { border: 1.8px solid var(--stroke); }
+.vrm-sub.off { border: 1.6px dashed var(--line-2); color: var(--ink-4); }
+.vrm-grip {
+  display: inline-flex;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--ink-5);
+  cursor: grab;
+  touch-action: none;
+}
+.vrm-grip:active { cursor: grabbing; }
+.vrm-idx { width: 12px; font-family: var(--font-hand); font-size: 21px; line-height: 1; color: var(--accent-ink); }
+.vrm-sub-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vrm-sub-name:hover { color: var(--accent-ink); text-decoration: underline; }
+.vrm-remove {
+  display: inline-flex;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: var(--ink-5);
+  border-radius: var(--r-blob);
+}
+.vrm-remove:hover { color: var(--err); background: var(--err-bg); }
+.vrm-grip:focus-visible,
+.vrm-remove:focus-visible,
+.vrm-sub-name:focus-visible,
+.vrm-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vrm-skip { position: absolute; font-size: 11px; color: var(--warn); white-space: nowrap; }
+.vrm-row {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 5px 10px;
+  background: var(--bg);
+  border-left: 4px solid var(--vrm-bar);
+  opacity: 0.62;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+.vrm-row.active { background: var(--surface); box-shadow: 0 0 0 1.4px var(--stroke) inset; opacity: 1; }
+.vrm-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.vrm-model { min-width: 0; font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vrm-model.none { font-weight: 400; color: var(--ink-4); }
+.vrm-row-label { margin-top: 2px; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vrm-tag { flex-shrink: 0; padding: 1px 8px; font-size: 11px; border-radius: 9px; white-space: nowrap; }
+/* 陶土色底配墨色字, 同 .btn.primary (白字压陶土色对比不够) */
+.vrm-tag.first { background: var(--accent); color: #141413; font-weight: 600; }
+.vrm-tag.backup,
+.vrm-tag.off { background: var(--surface-3); color: var(--ink-3); }
+.vrm-tag.rr,
+.vrm-tag.sticky { background: var(--ok-bg); color: var(--ok); }
+.vrm-tag.skipped { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); color: var(--warn); }
+.vrm-days { position: absolute; display: flex; gap: 3px; transition: opacity 0.15s; }
+.vrm-day {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+  color: var(--ink-5);
+}
+.vrm-day.on { background: var(--vrm-fill); color: var(--ink); }
+.vrm-day.hatch { background: repeating-linear-gradient(135deg, var(--vrm-fill) 0 3px, var(--surface) 3px 6px); color: var(--ink-2); }
+.vrm-day.cur { outline: 1.6px solid var(--stroke); }
+.vrm-bar {
+  position: absolute;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  transition: opacity 0.15s;
+}
+.vrm-bar > span { position: absolute; top: 0; bottom: 0; }
+.vrm-bar > .vrm-tick { top: -2px; bottom: -2px; width: 2px; background: var(--stroke); border-radius: 0; }
+.vrm-days.dim,
+.vrm-bar.dim { opacity: 0.55; }
+.vrm-add {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 1.6px dashed var(--line-2);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.vrm-add:hover { color: var(--ink); border-color: var(--ink-4); }
+@media (prefers-reduced-motion: reduce) {
+  .vrm-edge, .vrm-sub, .vrm-row, .vrm-days, .vrm-bar { transition: none; }
+}
+
 /* 订阅编辑页: 槽位分时段编辑 (SlotScheduleEditor, 设计稿 Subscription.dc.html) */
 .sched-ed { display: flex; flex-direction: column; gap: 16px; }
 .sched-ed-tabs { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -48,20 +48,26 @@ const pick = (m: string): string | null => {
 };
 
 /**
- * 此刻应使用的模型: 规则按列表顺序第一个命中且模型非空白的胜出, 否则槽位默认值。
- * 结果已 trim, 空白为 null。命中但模型空白的规则被跳过, 继续往后找。
+ * at 时刻胜出的规则下标: 按列表顺序第一个命中且模型非空白的; 没有为 null (此时用默认值)。
+ * 命中但模型空白的规则被跳过, 继续往后找。
+ */
+export function winningRule(rules: ScheduleRule[], at: WallClock): number | null {
+  for (let i = 0; i < rules.length; i++) {
+    if (ruleMatches(rules[i], at) && pick(rules[i].model) !== null) return i;
+  }
+  return null;
+}
+
+/**
+ * 此刻应使用的模型: 胜出规则 (`winningRule`) 的模型, 否则槽位默认值。结果已 trim, 空白为 null。
  */
 export function effectiveModel(
   def: string,
   rules: ScheduleRule[],
   at: WallClock,
 ): string | null {
-  for (const r of rules) {
-    if (!ruleMatches(r, at)) continue;
-    const m = pick(r.model);
-    if (m !== null) return m;
-  }
-  return pick(def);
+  const i = winningRule(rules, at);
+  return i !== null ? pick(rules[i].model) : pick(def);
 }
 
 /** 半小时下标 (0 = 周一 00:00) → 墙钟。 */

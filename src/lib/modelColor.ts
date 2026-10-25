@@ -20,7 +20,7 @@ function fnv1a(s: string): number {
   return h >>> 0;
 }
 
-type ModelColor = { bg: string; bar: string };
+export type ModelColor = { bg: string; bar: string };
 
 function colorOf(fill: string): ModelColor {
   return {
