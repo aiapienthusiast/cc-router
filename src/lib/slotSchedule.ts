@@ -3,6 +3,7 @@
 // 纯 TS: 只许 type-only import (scripts/check-slot-schedule.mjs 让 Node 直接 import 本文件),
 // 且不得用 Date 构造器推算星期 / 时刻 —— 「此刻」一律来自宿主机时钟 (useHostClock)。
 import type { FourSlot, ScheduleRule, SlotSchedules } from "@/types";
+import { SLOT_EFFORT_LEVELS } from "@/lib/modelSlots";
 
 /** 本地墙钟读数。weekday 1(周一)..7(周日), minute 为当天 0 点起的分钟数 0..1439。 */
 export interface WallClock {
@@ -197,6 +198,7 @@ export function validateRules(rules: ScheduleRule[]): string | null {
     if (end === null) return "schedule.err.end_format";
     if (start === end) return "schedule.err.same";
     if (r.model.trim() === "") return "schedule.err.model_empty";
+    if (r.effort !== undefined && !SLOT_EFFORT_LEVELS.includes(r.effort)) return "schedule.err.effort";
   }
   return null;
 }

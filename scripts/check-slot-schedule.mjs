@@ -88,10 +88,13 @@ for (const [name, rules, key] of [
   ["起止相同", [R([1], "08:00", "08:00", "m")], "schedule.err.same"],
   ["模型空白", [R([1], "08:00", "18:00", "  ")], "schedule.err.model_empty"],
   ["17 条", Array.from({ length: 17 }, () => R([1], "08:00", "18:00", "m")), "schedule.err.too_many"],
+  ["思考强度未知", [{ ...R([1], "08:00", "18:00", "m"), effort: "turbo" }], "schedule.err.effort"],
+  ["思考强度 minimal 不在槽位档位", [{ ...R([1], "08:00", "18:00", "m"), effort: "minimal" }], "schedule.err.effort"],
 ]) {
   const got = validateRules(rules);
   check(`validateRules: ${name}`, got === key, `期望 ${key}, 实际 ${got}`);
 }
+check("validateRules 接受时段思考强度 xhigh", validateRules([{ ...R([1], "08:00", "18:00", "m"), effort: "xhigh" }]) === null);
 check("validateRules 接受 24:00 结束与 16 条", validateRules([R([7], "00:30", "24:00", "m")]) === null
   && validateRules(Array.from({ length: 16 }, () => R([1], "08:00", "18:00", "m"))) === null);
 

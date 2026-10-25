@@ -1395,6 +1395,7 @@ mod protocol_tests {
             start: start.into(),
             end: "09:00".into(),
             model: "m".into(),
+            effort: None,
         }
     }
 

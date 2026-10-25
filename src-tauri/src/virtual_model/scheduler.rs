@@ -142,6 +142,7 @@ mod tests {
             start: "18:00".into(),
             end: "08:00".into(),
             model: "night".into(),
+            effort: None,
         }];
     }
 

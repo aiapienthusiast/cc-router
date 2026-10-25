@@ -252,6 +252,7 @@ fn subscription_slot_schedules_match() {
         start: "18:00".into(),
         end: "08:00".into(),
         model: "night".into(),
+        effort: None,
     }];
     let rt = SubscriptionRuntime::from_row(row);
     let real = SubscriptionDto::from_runtime(&rt, Vec::new(), &HashMap::new());

@@ -235,6 +235,8 @@ export interface ScheduleRule {
   start: string;
   end: string;
   model: string;
+  /** 这条时段生效时的思考强度; 缺失 = 跟随槽位 (`slot_efforts`)。与 Rust `ScheduleRule.effort` 对齐。 */
+  effort?: SlotEffort;
 }
 
 /** 每槽位的规则列表; 空列表的 key 后端不返回。与 Rust `SlotSchedules` 对齐。 */

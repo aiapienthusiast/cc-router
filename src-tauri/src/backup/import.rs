@@ -396,6 +396,7 @@ mod tests {
             start: "22:00".into(),
             end: "08:00".into(),
             model: "night-model".into(),
+            effort: None,
         }];
         let mut b = SubscriptionRow::test_fixture("custom", "custom");
         b.display_name = "B".into();
@@ -758,6 +759,7 @@ mod tests {
                     start: "08:15".into(),
                     end: "09:00".into(),
                     model: "m".into(),
+                    effort: None,
                 }];
             }),
             ("systemone schedule", |s| {
@@ -767,6 +769,7 @@ mod tests {
                     start: "08:00".into(),
                     end: "09:00".into(),
                     model: "m".into(),
+                    effort: None,
                 }];
             }),
         ];
@@ -793,6 +796,7 @@ mod tests {
                 start: "08:00".into(),
                 end: "09:00".into(),
                 model: "m".into(),
+                effort: None,
             }];
         }
         let p = preview(&f.file, &empty_local());
@@ -809,6 +813,7 @@ mod tests {
             start: "08:15".into(),
             end: "09:00".into(),
             model: "m".into(),
+            effort: None,
         }];
         let p = preview(&f.file, &empty_local());
         let b = p.subscriptions.iter().find(|s| s.display_name == "B").unwrap();

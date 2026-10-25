@@ -259,6 +259,8 @@ export function SlotScheduleEditor({
               onToggleDay={(d) => toggleDay(i, d)}
               onEdit={(patch) => editRule(i, patch)}
               onRemove={() => removeRule(i)}
+              effortDisabled={effortDisabled}
+              effortDisabledReason={effortDisabledReason}
               t={t}
             />
           ))}
@@ -376,10 +378,14 @@ function RuleRow({
   onToggleDay,
   onEdit,
   onRemove,
+  effortDisabled,
+  effortDisabledReason,
   t,
 }: {
   index: number;
   rule: ScheduleRule;
+  effortDisabled?: boolean;
+  effortDisabledReason?: string;
   custom: boolean;
   models: string[];
   modelInfos: ModelInfo[];
@@ -442,6 +448,16 @@ function RuleRow({
             onChange={(v) => onEdit({ model: v })}
             ariaLabel={t("schedule.edit.modelAria", { n })}
             t={t}
+          />
+        </div>
+        <div className="sched-ed-effort" title={effortDisabled ? effortDisabledReason : t("schedule.edit.ruleEffortHint")}>
+          <SlotEffortSelect
+            value={rule.effort}
+            onChange={(v) => onEdit({ effort: v ? (v as SlotEffort) : undefined })}
+            autoLabel={t("schedule.edit.effortFollowSlot")}
+            disabled={disabled || effortDisabled}
+            disabledReason={effortDisabled ? effortDisabledReason : undefined}
+            ariaLabel={t("schedule.edit.ruleEffortAria", { n })}
           />
         </div>
         <button

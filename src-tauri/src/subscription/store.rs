@@ -722,8 +722,8 @@ mod tests {
         let pool = migrated_pool().await;
         let mut row = SubscriptionRow::test_fixture("qoder", "default");
         row.slot_schedules.opus = vec![
-            ScheduleRule { days: vec![1, 2, 3], start: "22:00".into(), end: "08:00".into(), model: "night".into() },
-            ScheduleRule { days: vec![6, 7], start: "00:00".into(), end: "24:00".into(), model: "weekend".into() },
+            ScheduleRule { days: vec![1, 2, 3], start: "22:00".into(), end: "08:00".into(), model: "night".into(), effort: None },
+            ScheduleRule { days: vec![6, 7], start: "00:00".into(), end: "24:00".into(), model: "weekend".into(), effort: None },
         ];
         insert(&pool, &row).await.expect("insert");
         let loaded = load_runtime(&pool).await.expect("load");

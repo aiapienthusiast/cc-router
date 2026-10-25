@@ -411,6 +411,7 @@ export function SlotEffortSelect({
   disabledReason,
   ariaLabel,
   flex,
+  autoLabel,
 }: {
   value: SlotEffort | undefined;
   onChange: (next: string) => void;
@@ -418,6 +419,8 @@ export function SlotEffortSelect({
   disabledReason?: string;
   ariaLabel: string;
   flex?: string;
+  /** 「不强制」那一项的文案, 缺省「自动」(时段行用「跟随槽位」) */
+  autoLabel?: string;
 }) {
   const { t } = useT();
   return (
@@ -430,7 +433,7 @@ export function SlotEffortSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={EFFORT_AUTO}>{t("slotEffort.auto")}</SelectItem>
+        <SelectItem value={EFFORT_AUTO}>{autoLabel ?? t("slotEffort.auto")}</SelectItem>
         {SLOT_EFFORT_LEVELS.map((lv) => (
           <SelectItem key={lv} value={lv}>
             {lv}

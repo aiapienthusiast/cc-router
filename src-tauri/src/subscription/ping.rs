@@ -243,9 +243,8 @@ pub async fn probe_subscription(
 ) -> ProbeResult {
     let sub_id = row.id;
     let mut body = ping_body(model);
-    let forced_effort: Option<String> = slot
-        .and_then(|s| row.slot_efforts.get(s))
-        .map(str::to_string);
+    let forced_effort: Option<String> =
+        slot.and_then(|s| probe_effort(row, s, model, WallClock::now()));
 
     // System One 订阅的 auth_type 也是 ApiKey, 必须先于 match 分流, 否则会被当成 Anthropic 发 ping_body。
     if row.endpoint_protocol == crate::provider::model::EndpointProtocol::Systemone {
@@ -423,6 +422,28 @@ pub async fn probe_subscription(
 /// 代价是只给 fable 槽设了 effort 的订阅, 探测不会带上那个 effort。
 pub fn pick_test_model(row: &SubscriptionRow) -> Option<(String, Option<SubscriptionSlot>)> {
     pick_test_model_at(row, WallClock::now())
+}
+
+/// 探测 `model` 时该带的思考强度, 与真实请求同规则: 它是此刻生效的那条时段规则的模型 →
+/// 规则自带的强度 (没有则槽位级); 它是 [`pick_test_model_at`] 退到的「第一条规则」的模型 →
+/// 那条规则的强度 (没有则槽位级); 其余 (默认模型) → 槽位级。
+fn probe_effort(row: &SubscriptionRow, slot: SubscriptionSlot, model: &str, at: WallClock) -> Option<String> {
+    let now = crate::subscription::schedule::effective_choice(
+        row.model_slots.get(slot),
+        row.slot_schedules.get(slot),
+        at,
+    );
+    let rule_effort = match now {
+        Some((m, e)) if m == model => e,
+        _ => row
+            .slot_schedules
+            .get(slot)
+            .iter()
+            .find(|r| r.model.trim() == model)
+            .filter(|_| row.model_slots.get(slot).trim() != model)
+            .and_then(|r| r.effort.as_deref()),
+    };
+    rule_effort.or_else(|| row.slot_efforts.get(slot)).map(str::to_string)
 }
 
 /// [`pick_test_model`] with the local wall-clock time injected (tests use a fixed one).
@@ -627,12 +648,36 @@ mod tests {
         WallClock { weekday: 3, minute: 20 * 60 }
     }
 
+    /// 探测的思考强度与真实请求同规则: 此刻命中的规则强度优先; 退到第一条规则的模型时用那条的强度。
+    #[test]
+    fn probe_effort_follows_rule_effort() {
+        let mut row = SubscriptionRow::test_fixture("anthropic", "default");
+        row.model_slots.sonnet = String::new();
+        row.slot_efforts.sonnet = Some("low".into());
+        let mut r = night_rule("night-model");
+        r.effort = Some("max".into());
+        row.slot_schedules.sonnet = vec![r];
+        // 夜里命中规则 → 规则强度
+        assert_eq!(probe_effort(&row, SubscriptionSlot::Sonnet, "night-model", evening()), Some("max".into()));
+        // 白天没有生效模型, pick_test_model_at 退到第一条规则 → 仍用那条规则的强度
+        assert_eq!(pick_test_model_at(&row, noon()), Some(("night-model".into(), Some(SubscriptionSlot::Sonnet))));
+        assert_eq!(probe_effort(&row, SubscriptionSlot::Sonnet, "night-model", noon()), Some("max".into()));
+        // 规则不带强度 → 槽位级
+        row.slot_schedules.sonnet[0].effort = None;
+        assert_eq!(probe_effort(&row, SubscriptionSlot::Sonnet, "night-model", evening()), Some("low".into()));
+        // 默认模型生效 → 槽位级
+        row.model_slots.sonnet = "day-model".into();
+        row.slot_schedules.sonnet[0].effort = Some("max".into());
+        assert_eq!(probe_effort(&row, SubscriptionSlot::Sonnet, "day-model", noon()), Some("low".into()));
+    }
+
     fn night_rule(model: &str) -> ScheduleRule {
         ScheduleRule {
             days: vec![1, 2, 3, 4, 5, 6, 7],
             start: "18:00".into(),
             end: "08:00".into(),
             model: model.into(),
+            effort: None,
         }
     }
 

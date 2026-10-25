@@ -298,6 +298,18 @@ impl SubscriptionRow {
         effective_model(self.model_slots.get(slot), self.slot_schedules.get(slot), at)
     }
 
+    /// Forced reasoning effort for `slot` at `at`: the winning time rule's own effort if it has
+    /// one, otherwise the slot-level `slot_efforts` value (also when the default model wins).
+    pub fn slot_effort_at(&self, slot: SubscriptionSlot, at: WallClock) -> Option<&str> {
+        crate::subscription::schedule::effective_choice(
+            self.model_slots.get(slot),
+            self.slot_schedules.get(slot),
+            at,
+        )
+        .and_then(|(_, e)| e)
+        .or_else(|| self.slot_efforts.get(slot))
+    }
+
     pub fn messages_url(&self) -> String {
         join_base_path(&self.base_url, &self.messages_path)
     }
@@ -968,6 +980,7 @@ mod tests {
             start: "18:00".into(),
             end: "08:00".into(),
             model: "b".into(),
+            effort: None,
         }
     }
 

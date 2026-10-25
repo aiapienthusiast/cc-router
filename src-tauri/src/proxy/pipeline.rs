@@ -49,7 +49,7 @@ use crate::proxy::sanitize::{
 use crate::proxy::sse;
 use crate::proxy::upstream;
 use crate::state::AppState;
-use crate::subscription::model::{SlotEfforts, SubscriptionRow, SubscriptionRuntime};
+use crate::subscription::model::{SubscriptionRow, SubscriptionRuntime};
 use crate::subscription::schedule::WallClock;
 use crate::subscription::state_machine;
 use crate::virtual_model::scheduler::{build_candidate_order, provides_slot_at};
@@ -80,11 +80,16 @@ pub(crate) fn provider_reasoning_defaults(
 /// `fallback` / `jev` 虚拟模型透传原始 model、不走 slot 映射 ([`VirtualModelName::slot`] 对 Fallback
 /// 返回 Sonnet 只是为了满足签名), 因此**没有**对应槽位 → 恒 None, 让 fallback/jev 请求的 effort
 /// 完全不被干预。抽成独立函数是为了让这条不变式可单测。
-fn slot_forced_effort(slot_efforts: &SlotEfforts, vm_name: VirtualModelName) -> Option<String> {
-    if vm_name.is_fallback() || vm_name.is_jev() {
-        return None;
-    }
-    slot_efforts.get(vm_name.slot()).map(str::to_string)
+///
+/// 槽位设了时段规则时, 命中规则自带的思考强度优先, 否则用槽位级的值 (见
+/// [`SubscriptionRow::slot_effort_at`]); 与改写 model 用同一个 `clock`。
+fn slot_forced_effort(
+    row: &SubscriptionRow,
+    vm_name: VirtualModelName,
+    clock: WallClock,
+) -> Option<String> {
+    let slot = vm_name.four_slot()?;
+    row.slot_effort_at(slot, clock).map(str::to_string)
 }
 
 /// 槽位此刻 (按时段规则求值后) 没有模型时的跳过原因, 503 摘要直接上屏。
@@ -341,7 +346,7 @@ pub async fn dispatch(
             };
             // 订阅槽位级 forced effort: 用户给该订阅的该槽位固定了档位时, 丢弃客户端传入的
             // effort 强制使用它 (fallback 恒 None, 见 [`slot_forced_effort`])。
-            let forced_effort = slot_forced_effort(&guard.row.slot_efforts, vm_name);
+            let forced_effort = slot_forced_effort(&guard.row, vm_name, clock);
             (
                 guard.row.provider_id.clone(),
                 guard.row.endpoint_id.clone(),
@@ -1821,6 +1826,8 @@ fn build_error_status(status: reqwest::StatusCode) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::subscription::model::SlotEfforts;
+    use crate::subscription::schedule::ScheduleRule;
 
     fn efforts_all_max() -> SlotEfforts {
         SlotEfforts {
@@ -1831,46 +1838,44 @@ mod tests {
         }
     }
 
+    fn row_with_efforts(se: SlotEfforts) -> SubscriptionRow {
+        let mut row = SubscriptionRow::test_fixture("p", "e");
+        row.slot_efforts = se;
+        row
+    }
+
     #[test]
     fn slot_forced_effort_reads_matching_slot() {
-        let se = SlotEfforts {
+        let row = row_with_efforts(SlotEfforts {
             opus: Some("max".into()),
             ..Default::default()
-        };
+        });
         assert_eq!(
-            slot_forced_effort(&se, VirtualModelName::Opus),
+            slot_forced_effort(&row, VirtualModelName::Opus, noon()),
             Some("max".to_string())
         );
         // 只设了 opus, sonnet 槽仍是 auto
-        assert_eq!(slot_forced_effort(&se, VirtualModelName::Sonnet), None);
+        assert_eq!(slot_forced_effort(&row, VirtualModelName::Sonnet, noon()), None);
     }
 
-    /// fallback 透传原始 model、不走 slot 映射, 所以即便订阅四个槽位都设了档位,
-    /// fallback 请求的 effort 也必须完全不被干预。
     #[test]
-    fn slot_forced_effort_is_none_for_fallback() {
-        assert_eq!(
-            slot_forced_effort(&efforts_all_max(), VirtualModelName::Fallback),
-            None
-        );
+    fn slot_forced_effort_is_none_for_fallback_and_jev() {
+        let row = row_with_efforts(efforts_all_max());
+        assert_eq!(slot_forced_effort(&row, VirtualModelName::Fallback, noon()), None);
+        assert_eq!(slot_forced_effort(&row, VirtualModelName::Jev, noon()), None);
     }
 
     #[test]
     fn slot_forced_effort_covers_all_four_slots() {
-        let se = efforts_all_max();
+        let row = row_with_efforts(efforts_all_max());
         for vm in [
             VirtualModelName::Fable,
             VirtualModelName::Opus,
             VirtualModelName::Sonnet,
             VirtualModelName::Haiku,
         ] {
-            assert_eq!(slot_forced_effort(&se, vm), Some("max".to_string()));
+            assert_eq!(slot_forced_effort(&row, vm, noon()), Some("max".to_string()));
         }
-    }
-
-    #[test]
-    fn slot_forced_effort_is_none_for_jev() {
-        assert_eq!(slot_forced_effort(&efforts_all_max(), VirtualModelName::Jev), None);
     }
 
     #[test]
@@ -1883,7 +1888,22 @@ mod tests {
 
     // ---------- slot time schedule ----------
 
-    use crate::subscription::schedule::ScheduleRule;
+    /// 命中的时段规则自带思考强度时优先; 规则不带 (跟随槽位) 或默认模型生效时用槽位级的值。
+    #[test]
+    fn slot_forced_effort_prefers_winning_rule_effort() {
+        let mut row = night_only_opus_row();
+        row.slot_efforts.opus = Some("low".into());
+        row.slot_schedules.opus[0].effort = Some("max".into());
+        assert_eq!(slot_forced_effort(&row, VirtualModelName::Opus, evening()), Some("max".to_string()));
+
+        row.slot_schedules.opus[0].effort = None;
+        assert_eq!(slot_forced_effort(&row, VirtualModelName::Opus, evening()), Some("low".to_string()));
+
+        // 白天规则不命中: 默认模型生效 (若有), 用槽位级
+        row.model_slots.opus = "day".into();
+        row.slot_schedules.opus[0].effort = Some("max".into());
+        assert_eq!(slot_forced_effort(&row, VirtualModelName::Opus, noon()), Some("low".to_string()));
+    }
 
     fn noon() -> WallClock {
         WallClock { weekday: 3, minute: 12 * 60 }
@@ -1902,6 +1922,7 @@ mod tests {
             start: "18:00".into(),
             end: "08:00".into(),
             model: "night".into(),
+            effort: None,
         }];
         row
     }

@@ -23,6 +23,10 @@ pub struct ScheduleRule {
     pub start: String,
     pub end: String,
     pub model: String,
+    /// Reasoning effort while this rule is in effect. `None` = follow the slot's effort
+    /// (`slot_efforts`), so old rows without the key keep their behaviour.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
 }
 
 /// Per-slot rule lists. Same serde recipe as `SlotEfforts`: old rows (`'{}'`) deserialize to
@@ -138,6 +142,16 @@ pub fn effective_model<'a>(
     rules: &'a [ScheduleRule],
     at: WallClock,
 ) -> Option<&'a str> {
+    effective_choice(default, rules, at).map(|(m, _)| m)
+}
+
+/// Like [`effective_model`], plus the winning rule's own effort (`None` when the default
+/// won, or the rule follows the slot effort). Blank efforts count as `None`.
+pub fn effective_choice<'a>(
+    default: &'a str,
+    rules: &'a [ScheduleRule],
+    at: WallClock,
+) -> Option<(&'a str, Option<&'a str>)> {
     let pick = |m: &'a str| {
         let m = m.trim();
         (!m.is_empty()).then_some(m)
@@ -145,8 +159,8 @@ pub fn effective_model<'a>(
     rules
         .iter()
         .filter(|r| rule_matches(r, at))
-        .find_map(|r| pick(&r.model))
-        .or_else(|| pick(default))
+        .find_map(|r| pick(&r.model).map(|m| (m, r.effort.as_deref().and_then(pick))))
+        .or_else(|| pick(default).map(|m| (m, None)))
 }
 
 fn slot_label(slot: SubscriptionSlot) -> &'static str {
@@ -186,6 +200,11 @@ fn validate_rule(rule: &ScheduleRule) -> Result<(), &'static str> {
     }
     if rule.model.trim().is_empty() {
         return Err("模型不能为空");
+    }
+    if let Some(e) = &rule.effort {
+        if !crate::commands::subscriptions::ALLOWED_SLOT_EFFORTS.contains(&e.as_str()) {
+            return Err("思考强度只能是 low / medium / high / xhigh / max");
+        }
     }
     Ok(())
 }
@@ -245,12 +264,52 @@ mod tests {
         }
     }
 
+    #[test]
+    fn effective_choice_carries_winning_rule_effort() {
+        let all = [1, 2, 3, 4, 5, 6, 7];
+        let mut night = rule(&all, "18:00", "08:00", "n");
+        night.effort = Some("max".into());
+        let rules = vec![night, rule(&all, "08:00", "12:00", "m")];
+        let at = |h: u16| WallClock { weekday: 3, minute: h * 60 };
+        assert_eq!(effective_choice("d", &rules, at(20)), Some(("n", Some("max"))));
+        // rule without effort follows the slot effort -> None here
+        assert_eq!(effective_choice("d", &rules, at(9)), Some(("m", None)));
+        // default wins -> no rule effort
+        assert_eq!(effective_choice("d", &rules, at(14)), Some(("d", None)));
+        // blank effort counts as None
+        let mut blank = rule(&all, "00:00", "24:00", "x");
+        blank.effort = Some("  ".into());
+        assert_eq!(effective_choice("", &[blank], at(1)), Some(("x", None)));
+    }
+
+    #[test]
+    fn validate_rejects_unknown_effort_and_keeps_old_json() {
+        let mut r = rule(&[1], "08:00", "09:00", "m");
+        r.effort = Some("turbo".into());
+        let s = SlotSchedules { opus: vec![r.clone()], ..Default::default() };
+        assert!(validate_slot_schedules(&s).unwrap_err().contains("思考强度"));
+        r.effort = Some("minimal".into());
+        let s = SlotSchedules { opus: vec![r.clone()], ..Default::default() };
+        assert!(validate_slot_schedules(&s).is_err(), "minimal 不在槽位档位白名单");
+        r.effort = Some("xhigh".into());
+        let s = SlotSchedules { opus: vec![r], ..Default::default() };
+        assert!(validate_slot_schedules(&s).is_ok());
+        // old rows without the key deserialize with effort None and serialize without it
+        let old: SlotSchedules = serde_json::from_str(
+            r#"{"opus":[{"days":[1],"start":"08:00","end":"09:00","model":"m"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(old.opus[0].effort, None);
+        assert!(!serde_json::to_string(&old).unwrap().contains("effort"));
+    }
+
     fn rule(days: &[u8], start: &str, end: &str, model: &str) -> ScheduleRule {
         ScheduleRule {
             days: days.to_vec(),
             start: start.into(),
             end: end.into(),
             model: model.into(),
+            effort: None,
         }
     }
 
