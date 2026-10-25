@@ -74,7 +74,7 @@
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.4"
   },
   "pnpm": {
     "overrides": {
@@ -82,7 +82,7 @@
       "js-cookie": ">=3.0.7",
       "uuid@11": ">=11.1.1",
       "uuid@13": ">=13.0.1",
-      "dompurify": "^3.4.16",
+      "dompurify": "^3.4.17",
       "source-map-js": "^1.2.2",
       "@babel/core": "^7.29.6",
       "@codemirror/state": "6.7.1"
