@@ -1,6 +1,7 @@
 // 槽位分时段规则的求值镜像。语义与 Rust `subscription/schedule.rs` 完全一致,
 // 两边读同一张用例表 `slot-schedule-cases.json`。
-// 纯 TS: 只许 type-only import (scripts/check-slot-schedule.mjs 让 Node 直接 import 本文件),
+// 纯 TS: 只许导入同样能被 Node 直接加载的纯 TS 模块 (scripts/check-slot-schedule.mjs 让 Node
+// 直接 import 本文件; 被导入的模块自身也只能有 type-only import),
 // 且不得用 Date 构造器推算星期 / 时刻 —— 「此刻」一律来自宿主机时钟 (useHostClock)。
 import type { FourSlot, ScheduleRule, SlotSchedules } from "@/types";
 import { SLOT_EFFORT_LEVELS } from "@/lib/modelSlots";

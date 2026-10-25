@@ -232,7 +232,7 @@ async fn probe_systemone(client: &reqwest::Client, row: &SubscriptionRow, model:
 /// `is_streaming=false` → 各 dispatch 走非流式 collector;无客户端转发头,故
 /// `forward_headers`/`client_headers` 传空。`sub_id` 取自 `row.id`。
 ///
-/// `slot`: `model` 来自哪个订阅槽位 (由 [`pick_test_model`] 给出)。用来取该槽位的 forced
+/// `slot`: `model` 来自哪个订阅槽位 (由 [`pick_test_model_at`] 给出)。用来取该槽位的 forced
 /// effort, 让探测的 effort 与真实 dispatch 一致 —— 否则用户给"只接受某一档的模型"固定了档位,
 /// 探测却发 yaml 默认档触发上游 400, UI 就会谎报"连接不通"。example_models 兜底时传 None。
 pub async fn probe_subscription(
@@ -240,11 +240,12 @@ pub async fn probe_subscription(
     row: &SubscriptionRow,
     model: &str,
     slot: Option<SubscriptionSlot>,
+    at: WallClock,
 ) -> ProbeResult {
     let sub_id = row.id;
     let mut body = ping_body(model);
     let forced_effort: Option<String> =
-        slot.and_then(|s| probe_effort(row, s, model, WallClock::now()));
+        slot.and_then(|s| probe_effort(row, s, model, at));
 
     // System One 订阅的 auth_type 也是 ApiKey, 必须先于 match 分流, 否则会被当成 Anthropic 发 ping_body。
     if row.endpoint_protocol == crate::provider::model::EndpointProtocol::Systemone {
@@ -408,22 +409,6 @@ pub async fn probe_subscription(
     }
 }
 
-/// 选一个 model 名用于探测请求, 并一并返回它来自哪个槽位。优先 sonnet → haiku → opus
-/// (CC 主用 sonnet), 都为空时退到订阅 snapshot 的 model_discovery.example_models[0]。
-/// "(pending)" 是 SubscriptionNewPage 两步向导留下的占位, 跳过。
-/// 每个槽位内依次取: 此刻生效模型 (时段规则 → 默认) → 默认模型 → 第一条规则的模型 ——
-/// 探测验证的是连通性, 不该因为「现在不在时段内」而测不了。
-///
-/// 返回槽位是为了让 [`probe_subscription`] 能取该槽位的 forced effort —— 否则用户给"只接受
-/// 某一档的模型"固定了档位, 探测却发 yaml 默认档, 上游 400, UI 谎报"连接不通"。
-/// example_models 兜底时没有对应槽位, 返回 None。
-///
-/// 注: 刻意不遍历 fable (保持既有行为不变) —— 探测只验证连通性, 用最弱可用的槽位即可。
-/// 代价是只给 fable 槽设了 effort 的订阅, 探测不会带上那个 effort。
-pub fn pick_test_model(row: &SubscriptionRow) -> Option<(String, Option<SubscriptionSlot>)> {
-    pick_test_model_at(row, WallClock::now())
-}
-
 /// 探测 `model` 时该带的思考强度, 与真实请求同规则: 它是此刻生效的那条时段规则的模型 →
 /// 规则自带的强度 (没有则槽位级); 它是 [`pick_test_model_at`] 退到的「第一条规则」的模型 →
 /// 那条规则的强度 (没有则槽位级); 其余 (默认模型) → 槽位级。
@@ -446,7 +431,20 @@ fn probe_effort(row: &SubscriptionRow, slot: SubscriptionSlot, model: &str, at: 
     rule_effort.or_else(|| row.slot_efforts.get(slot)).map(str::to_string)
 }
 
-/// [`pick_test_model`] with the local wall-clock time injected (tests use a fixed one).
+/// 选一个 model 名用于探测请求, 并一并返回它来自哪个槽位。优先 sonnet → haiku → opus
+/// (CC 主用 sonnet), 都为空时退到订阅 snapshot 的 model_discovery.example_models[0]。
+/// "(pending)" 是 SubscriptionNewPage 两步向导留下的占位, 跳过。
+/// 每个槽位内依次取: 此刻生效模型 (时段规则 → 默认) → 默认模型 → 第一条规则的模型 ——
+/// 探测验证的是连通性, 不该因为「现在不在时段内」而测不了。
+///
+/// 返回槽位是为了让 [`probe_subscription`] 能取该槽位的 forced effort —— 否则用户给"只接受
+/// 某一档的模型"固定了档位, 探测却发 yaml 默认档, 上游 400, UI 谎报"连接不通"。
+/// example_models 兜底时没有对应槽位, 返回 None。
+///
+/// 注: 刻意不遍历 fable (保持既有行为不变) —— 探测只验证连通性, 用最弱可用的槽位即可。
+/// 代价是只给 fable 槽设了 effort 的订阅, 探测不会带上那个 effort。
+///
+/// `at`: 本机挂钟时刻, 调用方取一次后同时传给 [`probe_subscription`] (测试用固定值)。
 pub fn pick_test_model_at(
     row: &SubscriptionRow,
     at: WallClock,

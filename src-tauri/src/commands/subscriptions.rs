@@ -731,7 +731,9 @@ pub async fn test_connection(
         g.row.clone()
     };
 
-    let (model, slot) = match ping::pick_test_model(&row) {
+    // 选模型与带的思考强度用同一时刻, 不会一个按半点前、一个按半点后
+    let clock = crate::subscription::schedule::WallClock::now();
+    let (model, slot) = match ping::pick_test_model_at(&row, clock) {
         Some(m) => m,
         None => {
             let note = ping::ProbeNote::NoTestModel;
@@ -746,7 +748,7 @@ pub async fn test_connection(
         }
     };
 
-    let result = ping::probe_subscription(&state, &row, &model, slot).await;
+    let result = ping::probe_subscription(&state, &row, &model, slot, clock).await;
 
     let mut state_reset = false;
     if result.ok {
