@@ -26,7 +26,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProviderIcon } from "@/components/ProviderIcon";
-import { ModelSlotPicker } from "@/components/ModelSlotPicker";
+import {
+  ModelListModeBar,
+  ModelSlotPicker,
+  useModelListMode,
+} from "@/components/ModelSlotPicker";
 import { SlotScheduleEditor } from "@/components/schedule/SlotScheduleEditor";
 import { SubscriptionBalanceCard } from "@/components/SubscriptionBalanceCard";
 import { SubscriptionQuotaCard } from "@/components/SubscriptionQuotaCard";
@@ -117,10 +121,10 @@ export function SubscriptionEditPage() {
   const [forwardClientHeaders, setForwardClientHeaders] = useState(false);
 
   const [models, setModels] = useState<ModelInfo[] | null>(null);
-  /** ModelSlotPicker 的自动 / 手动 (手动时分时段编辑也用文本输入) */
-  const [manualModels, setManualModels] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
+  /** 模型列表的自动 / 手动, 开关在槽位卡片右上角 (手动时分时段编辑也用文本输入) */
+  const [modelMode, chooseModelMode] = useModelListMode(models, modelError);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [keyDialog, setKeyDialog] = useState(false);
   const [newKey, setNewKey] = useState("");
@@ -517,10 +521,21 @@ export function SubscriptionEditPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>{t("subscriptionEdit.modelSlotsTitle")}</CardTitle>
+              <CardHeader className="slot-card-head flex-row flex-wrap items-start justify-between gap-x-5 gap-y-3 space-y-0">
+                <div className="min-w-0 space-y-1.5">
+                  <CardTitle>{t("subscriptionEdit.modelSlotsTitle")}</CardTitle>
+                  {!isSystemOne && (
+                    <p className="text-sm text-muted-foreground">{t("schedule.edit.cardDesc")}</p>
+                  )}
+                </div>
                 {!isSystemOne && (
-                  <p className="text-sm text-muted-foreground">{t("schedule.edit.cardDesc")}</p>
+                  <ModelListModeBar
+                    label={t("schedule.edit.modelListLabel")}
+                    mode={modelMode}
+                    onChoose={chooseModelMode}
+                    onRefresh={refreshModels}
+                    loading={fetchingModels}
+                  />
                 )}
               </CardHeader>
               <CardContent>
@@ -532,8 +547,12 @@ export function SubscriptionEditPage() {
                       schedules={schedules}
                       onSchedulesChange={setSchedules}
                       models={modelIds}
-                      manual={manualModels}
+                      manual={modelMode === "manual"}
                       initialSlot={initialSlot}
+                      efforts={slotEfforts}
+                      onEffortsChange={setSlotEfforts}
+                      effortDisabled={sub.auth_type === "kiro_oauth"}
+                      effortDisabledReason={t("slotEffort.unsupportedKiro")}
                     />
                   </div>
                 )}
@@ -556,7 +575,7 @@ export function SubscriptionEditPage() {
                   systemone={isSystemOne}
                   jevRequired={isSystemOne && sub.is_user_defined}
                   hideMainSlots={!isSystemOne}
-                  onModeChange={setManualModels}
+                  mode={isSystemOne ? undefined : modelMode}
                 />
                 {sub.model_cache && !isSystemOne && (
                   <div className="mt-3 text-xs text-muted-foreground">

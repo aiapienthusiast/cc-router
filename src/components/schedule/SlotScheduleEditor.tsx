@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ModelSelect } from "@/components/ModelSlotPicker";
+import { ModelSelect, SlotEffortSelect } from "@/components/ModelSlotPicker";
 import { DayTypeCalendar, type Cell } from "./DayTypeCalendar";
 import { assignModelColors, modelColor } from "@/lib/modelColor";
 import { MODEL_SLOT_KEYS } from "@/lib/modelSlots";
@@ -26,7 +26,15 @@ import {
   weeklyHours,
   type DayPreset,
 } from "@/lib/slotSchedule";
-import type { FourSlot, ModelInfo, ModelSlots, ScheduleRule, SlotSchedules } from "@/types";
+import type {
+  FourSlot,
+  ModelInfo,
+  ModelSlots,
+  ScheduleRule,
+  SlotEffort,
+  SlotEfforts,
+  SlotSchedules,
+} from "@/types";
 
 /** 开始 00:00..23:30, 结束 00:30..24:00 (30 分钟粒度, spec §3) */
 const START_TIMES = Array.from({ length: 48 }, (_, i) => hhmm(i * 30));
@@ -51,9 +59,19 @@ export function SlotScheduleEditor({
   manual,
   initialSlot,
   disabled,
+  efforts,
+  onEffortsChange,
+  effortDisabled,
+  effortDisabledReason,
 }: {
   slots: ModelSlots;
   onSlotsChange: (s: ModelSlots) => void;
+  /** 每槽位思考强度 (对该槽所有时段的模型都生效), 与父组件共用一份 */
+  efforts: SlotEfforts;
+  onEffortsChange: (e: SlotEfforts) => void;
+  /** Kiro 等协议没有 reasoning 字段时灰掉, 原因挂 title */
+  effortDisabled?: boolean;
+  effortDisabledReason?: string;
   schedules: SlotSchedules;
   onSchedulesChange: (s: SlotSchedules) => void;
   models: string[];
@@ -210,6 +228,21 @@ export function SlotScheduleEditor({
                 t={t}
               />
             </div>
+            <div className="sched-ed-effort" title={t("schedule.edit.effortHint")}>
+              <span className="sched-ed-effort-label">{t("slotEffort.colLabel")}</span>
+              <SlotEffortSelect
+                value={efforts[cur]}
+                onChange={(v) => {
+                  const next = { ...efforts };
+                  if (v) next[cur] = v as SlotEffort;
+                  else delete next[cur];
+                  onEffortsChange(next);
+                }}
+                disabled={disabled || effortDisabled}
+                disabledReason={effortDisabled ? effortDisabledReason : undefined}
+                ariaLabel={t("slotEffort.aria", { slot: slotName })}
+              />
+            </div>
           </div>
 
           {rules.map((r, i) => (
@@ -287,11 +320,7 @@ export function SlotScheduleEditor({
           </div>
         </div>
 
-        <div className="sched-ed-preview">
-          <div className="sched-ed-preview-title">
-            {t("schedule.edit.previewTitle")}
-            <span className="sched-ed-preview-note">{t("schedule.edit.previewHostTime")}</span>
-          </div>
+        <div className="sched-ed-preview" aria-label={t("schedule.edit.previewTitle")}>
           <DayTypeCalendar cells={cells} emptyLabel="unavailable" />
         </div>
       </div>

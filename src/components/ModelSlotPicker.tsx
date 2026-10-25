@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, CircleAlert, CircleQuestionMark } from "lucide-react";
 import { useT, type TFunction } from "@/i18n";
 import { SLOT_EFFORT_LEVELS } from "@/lib/modelSlots";
@@ -16,7 +16,8 @@ import type { ModelInfo, ModelSlots, SlotEffort, SlotEfforts } from "@/types";
 const EFFORT_AUTO = "__auto__";
 const MODEL_NONE = "__none__";
 
-type Mode = "auto" | "manual";
+export type ModelListMode = "auto" | "manual";
+type Mode = ModelListMode;
 
 interface Props {
   value: ModelSlots;
@@ -41,12 +42,12 @@ interface Props {
   /** 自定义 systemone 订阅: 没有示例模型可回退, Jev 槽必填 (换成不带「可选」的文案) */
   jevRequired?: boolean;
   /**
-   * 订阅编辑页: 四个主槽的模型输入交给 SlotScheduleEditor (同一份 value), 这里只留
-   * 模型列表的自动 / 手动与刷新、四槽思考强度、兜底槽。新建向导不传 (四槽必填)。
+   * 订阅编辑页: 四个主槽的模型与思考强度交给 SlotScheduleEditor (同一份 value / efforts),
+   * 自动 / 手动与刷新挂在卡片右上角 (`ModelListModeBar`), 这里只留兜底槽。新建向导不传 (四槽必填)。
    */
   hideMainSlots?: boolean;
-  /** 自动 / 手动切换后回报 (编辑页据此让 SlotScheduleEditor 换成文本输入) */
-  onModeChange?: (manual: boolean) => void;
+  /** 受控的自动 / 手动 (编辑页由卡片右上角的开关驱动); 不传则组件自己管 */
+  mode?: Mode;
 }
 
 type SlotRow = { key: keyof ModelSlots; labelKey: string; hintKey: string };
@@ -99,35 +100,15 @@ export function ModelSlotPicker({
   systemone,
   jevRequired,
   hideMainSlots,
-  onModeChange,
+  mode: controlledMode,
 }: Props) {
   const { t } = useT();
-  // null 表示还没初始化;一旦用户主动点击切换,userChose 置 true,不再被外部 data 反向覆盖。
-  const [mode, setMode] = useState<Mode | null>(null);
-  const userChoseRef = useRef(false);
+  const [ownMode, chooseMode] = useModelListMode(models, error);
   const [showEffortHelp, setShowEffortHelp] = useState(false);
-
-  useEffect(() => {
-    if (userChoseRef.current) return;
-    if (error || (models && models.length === 0)) {
-      setMode("manual");
-    } else if (models && models.length > 0) {
-      setMode("auto");
-    }
-  }, [error, models]);
+  const controlled = controlledMode !== undefined;
 
   // systemone 没有模型列表可选, 恒为手动输入 (这样示例提示也会显示)
-  const effectiveMode: Mode = systemone ? "manual" : (mode ?? "auto");
-
-  const manual = effectiveMode === "manual";
-  useEffect(() => {
-    onModeChange?.(manual);
-  }, [manual, onModeChange]);
-
-  function chooseMode(next: Mode) {
-    userChoseRef.current = true;
-    setMode(next);
-  }
+  const effectiveMode: Mode = systemone ? "manual" : (controlledMode ?? ownMode);
 
   function update(key: keyof ModelSlots, v: string) {
     onChange({ ...value, [key]: v });
@@ -149,27 +130,14 @@ export function ModelSlotPicker({
 
   function effortSelect(key: keyof SlotEfforts, labelKey: string, flex: string) {
     return (
-      <Select
-        value={efforts[key] ?? EFFORT_AUTO}
-        onValueChange={(v) => updateEffort(key, v === EFFORT_AUTO ? "" : v)}
+      <SlotEffortSelect
+        value={efforts[key]}
+        onChange={(v) => updateEffort(key, v)}
         disabled={disabled || effortDisabled}
-      >
-        <SelectTrigger
-          style={{ flex }}
-          aria-label={t("slotEffort.aria", { slot: t(labelKey) })}
-          title={effortDisabled ? effortDisabledReason : undefined}
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={EFFORT_AUTO}>{t("slotEffort.auto")}</SelectItem>
-          {SLOT_EFFORT_LEVELS.map((lv) => (
-            <SelectItem key={lv} value={lv}>
-              {lv}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        disabledReason={effortDisabled ? effortDisabledReason : undefined}
+        ariaLabel={t("slotEffort.aria", { slot: t(labelKey) })}
+        flex={flex}
+      />
     );
   }
 
@@ -199,53 +167,20 @@ export function ModelSlotPicker({
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 14,
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-2)" }}>
-            {splitEffort ? t("schedule.edit.modelListLabel") : t("modelSlot.label")}
-          </span>
-          {!systemone && (
-            <div className="radio-group">
-              <button
-                className={effectiveMode === "auto" ? "on" : ""}
-                onClick={() => chooseMode("auto")}
-                disabled={disabled}
-                type="button"
-              >
-                {t("modelSlot.modeAuto")}
-              </button>
-              <button
-                className={effectiveMode === "manual" ? "on" : ""}
-                onClick={() => chooseMode("manual")}
-                disabled={disabled}
-                type="button"
-              >
-                {t("modelSlot.modeManual")}
-              </button>
-            </div>
-          )}
+      {!controlled && (
+        <div style={{ marginBottom: 14 }}>
+          <ModelListModeBar
+            label={t("modelSlot.label")}
+            mode={effectiveMode}
+            onChoose={chooseMode}
+            onRefresh={onRefresh}
+            refreshLabel={refreshLabel}
+            loading={loading}
+            disabled={disabled}
+            systemone={systemone}
+          />
         </div>
-        {onRefresh && !systemone && (
-          <button
-            className="btn sm"
-            onClick={onRefresh}
-            disabled={disabled || loading}
-            type="button"
-          >
-            <RefreshCw size={12} className={loading ? "animate-spin" : undefined} />
-            {refreshLabel ?? t("modelSlot.refresh")}
-          </button>
-        )}
-      </div>
+      )}
 
       {error && (
         <div className="alert warn" style={{ marginBottom: 12 }}>
@@ -257,36 +192,6 @@ export function ModelSlotPicker({
       {effectiveMode === "manual" && exampleModels && exampleModels.length > 0 && (
         <div className="field-hint" style={{ marginTop: 0, marginBottom: 10 }}>
           {t("modelSlot.examplePrefix")}{exampleModels.join(", ")}
-        </div>
-      )}
-
-      {splitEffort && (
-        <div style={{ marginBottom: 14 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              marginBottom: 8,
-              fontSize: 12,
-              fontWeight: 500,
-              color: "var(--ink-3)",
-            }}
-          >
-            {t("slotEffort.colLabel")}
-            {effortHelpToggle}
-          </div>
-          {effortHelpPanel}
-          <div className="slot-effort-grid">
-            {SLOTS.map(({ key, labelKey }) => (
-              <div key={key} className="slot-effort-cell">
-                <span className="field-label" style={{ margin: 0 }}>
-                  {t(labelKey)}
-                </span>
-                {effortSelect(key as keyof SlotEfforts, labelKey, "1 1 auto")}
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
@@ -415,6 +320,127 @@ export function ModelSlotPicker({
  * noneLabel: 空值是合法选择时给出 (兜底槽「不配置」、分时段默认模型「不设置」), 列表首项即它;
  * 不给时空值只是未选提示。SlotScheduleEditor 也用它。
  */
+/**
+ * 模型列表的自动 / 手动。null 表示还没初始化; 一旦用户主动点击切换, 不再被外部 data 反向覆盖。
+ * 拉不到列表 (报错或空列表) 时初始为手动。
+ */
+export function useModelListMode(
+  models: ModelInfo[] | null,
+  error?: string | null,
+): [ModelListMode, (next: ModelListMode) => void] {
+  const [mode, setMode] = useState<ModelListMode | null>(null);
+  const userChoseRef = useRef(false);
+
+  useEffect(() => {
+    if (userChoseRef.current) return;
+    if (error || (models && models.length === 0)) {
+      setMode("manual");
+    } else if (models && models.length > 0) {
+      setMode("auto");
+    }
+  }, [error, models]);
+
+  const choose = useCallback((next: ModelListMode) => {
+    userChoseRef.current = true;
+    setMode(next);
+  }, []);
+  return [mode ?? "auto", choose];
+}
+
+/** 「模型列表 自动 / 手动」开关 + 刷新按钮。编辑页挂在槽位卡片右上角, 新建向导在 ModelSlotPicker 顶部。 */
+export function ModelListModeBar({
+  label,
+  mode,
+  onChoose,
+  onRefresh,
+  refreshLabel,
+  loading,
+  disabled,
+  systemone,
+}: {
+  label: string;
+  mode: ModelListMode;
+  onChoose: (next: ModelListMode) => void;
+  onRefresh?: () => void;
+  refreshLabel?: string;
+  loading?: boolean;
+  disabled?: boolean;
+  systemone?: boolean;
+}) {
+  const { t } = useT();
+  return (
+    <div className="model-list-bar">
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-2)" }}>{label}</span>
+        {!systemone && (
+          <div className="radio-group">
+            <button
+              className={mode === "auto" ? "on" : ""}
+              onClick={() => onChoose("auto")}
+              disabled={disabled}
+              type="button"
+            >
+              {t("modelSlot.modeAuto")}
+            </button>
+            <button
+              className={mode === "manual" ? "on" : ""}
+              onClick={() => onChoose("manual")}
+              disabled={disabled}
+              type="button"
+            >
+              {t("modelSlot.modeManual")}
+            </button>
+          </div>
+        )}
+      </div>
+      {onRefresh && !systemone && (
+        <button className="btn sm" onClick={onRefresh} disabled={disabled || loading} type="button">
+          <RefreshCw size={12} className={loading ? "animate-spin" : undefined} />
+          {refreshLabel ?? t("modelSlot.refresh")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** 单个槽位的思考强度下拉。`onChange("")` = auto (透传客户端 effort)。 */
+export function SlotEffortSelect({
+  value,
+  onChange,
+  disabled,
+  disabledReason,
+  ariaLabel,
+  flex,
+}: {
+  value: SlotEffort | undefined;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  disabledReason?: string;
+  ariaLabel: string;
+  flex?: string;
+}) {
+  const { t } = useT();
+  return (
+    <Select
+      value={value ?? EFFORT_AUTO}
+      onValueChange={(v) => onChange(v === EFFORT_AUTO ? "" : v)}
+      disabled={disabled}
+    >
+      <SelectTrigger style={flex ? { flex } : undefined} aria-label={ariaLabel} title={disabledReason}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={EFFORT_AUTO}>{t("slotEffort.auto")}</SelectItem>
+        {SLOT_EFFORT_LEVELS.map((lv) => (
+          <SelectItem key={lv} value={lv}>
+            {lv}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function ModelSelect({
   id,
   noneLabel,
