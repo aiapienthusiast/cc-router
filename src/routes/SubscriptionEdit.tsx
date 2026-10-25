@@ -43,27 +43,23 @@ import {
   useSetSubscriptionEnabled,
   useUpdateSubscription,
   useUpdateSubscriptionKey,
-  useUpdateTokenQuotas,
 } from "@/hooks/useSubscriptions";
 import { useT } from "@/i18n";
 import type {
   AuthHeaderFormat,
   ModelInfo,
   ModelSlots,
-  QuotaPeriod,
   RefreshModelListResult,
   SlotEfforts,
   SlotSchedules,
   SubscriptionPatch,
   TestConnectionResult,
-  TokenQuotas,
 } from "@/types";
 import { MODEL_SLOT_KEYS, parseSlotParam, uniformSlots } from "@/lib/modelSlots";
 import { normalizeSchedules, schedulesEqual, validateRules } from "@/lib/slotSchedule";
 import { lastErrorText, testResultText } from "@/lib/backendText";
 import { providerName } from "@/lib/providerText";
 import { UrlParamFields, urlParamErrors } from "@/components/UrlParamFields";
-import { formatTokenShorthand, parseTokenShorthand } from "@/lib/quota";
 import { errorText } from "@/lib/errorText";
 
 export function SubscriptionEditPage() {
@@ -82,7 +78,6 @@ export function SubscriptionEditPage() {
   });
   const providers = useProviders();
   const updateMut = useUpdateSubscription();
-  const updateQuotasMut = useUpdateTokenQuotas();
   const deleteMut = useDeleteSubscription();
   const enabledMut = useSetSubscriptionEnabled();
   const updateKeyMut = useUpdateSubscriptionKey();
@@ -103,13 +98,6 @@ export function SubscriptionEditPage() {
   const [slots, setSlots] = useState<ModelSlots>(uniformSlots(""));
   const [slotEfforts, setSlotEfforts] = useState<SlotEfforts>({});
   const [schedules, setSchedules] = useState<SlotSchedules>({});
-  const [quotaInputs, setQuotaInputs] = useState<Record<QuotaPeriod, string>>({
-    daily: "",
-    weekly: "",
-    monthly: "",
-    total: "",
-  });
-  const [quotaError, setQuotaError] = useState<string | null>(null);
 
   // 自定义订阅可编辑的连接字段
   const [baseUrl, setBaseUrl] = useState<string>("");
@@ -143,14 +131,6 @@ export function SubscriptionEditPage() {
       setSlots(subQuery.data.model_slots);
       setSlotEfforts(subQuery.data.slot_efforts ?? {});
       setSchedules(subQuery.data.slot_schedules ?? {});
-      const q = subQuery.data.token_quotas ?? {};
-      setQuotaInputs({
-        daily: formatTokenShorthand(q.daily),
-        weekly: formatTokenShorthand(q.weekly),
-        monthly: formatTokenShorthand(q.monthly),
-        total: formatTokenShorthand(q.total),
-      });
-      setQuotaError(null);
       setBaseUrl(subQuery.data.base_url);
       setMessagesPath(subQuery.data.messages_path);
       setAuthHeaderName(subQuery.data.auth_header_name);
@@ -261,22 +241,6 @@ export function SubscriptionEditPage() {
       setSaveError(`${t("subscriptionEdit.errSave")}: ${errorText(e)}`);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function saveQuotas() {
-    if (!id) return;
-    setQuotaError(null);
-    const out: TokenQuotas = {};
-    for (const p of ["daily", "weekly", "monthly", "total"] as QuotaPeriod[]) {
-      const v = parseTokenShorthand(quotaInputs[p]);
-      if (v === null) return setQuotaError(t("quota.invalid"));
-      if (v !== undefined) out[p] = v;
-    }
-    try {
-      await updateQuotasMut.mutateAsync({ id, quotas: out });
-    } catch (e) {
-      setQuotaError(errorText(e));
     }
   }
 
@@ -592,31 +556,6 @@ export function SubscriptionEditPage() {
                 queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
               }}
             />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("quota.title")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">{t("quota.desc")}</p>
-                {(["daily", "weekly", "monthly", "total"] as QuotaPeriod[]).map((p) => (
-                  <div key={p} className="flex items-center gap-3">
-                    <Label className="w-24 shrink-0">{t(`quota.period.${p}`)}</Label>
-                    <Input
-                      className="font-mono"
-                      placeholder={t("quota.placeholder")}
-                      value={quotaInputs[p]}
-                      onChange={(e) => setQuotaInputs({ ...quotaInputs, [p]: e.target.value })}
-                    />
-                  </div>
-                ))}
-                {quotaError && <p className="text-sm text-destructive">{quotaError}</p>}
-                <Button size="sm" onClick={saveQuotas} disabled={updateQuotasMut.isPending}>
-                  {updateQuotasMut.isPending && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                  {t("quota.save")}
-                </Button>
-              </CardContent>
-            </Card>
 
             <SubscriptionQuotaCard
               subscription={sub}

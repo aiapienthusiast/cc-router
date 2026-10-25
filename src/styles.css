@@ -3782,3 +3782,30 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .web-login-error { font-size: 12px; color: var(--err); }
 .nav-logout { font: inherit; }
 /* .btn-dark: 暗色下 --ink 是浅色, 深底白字自动变成浅底深字, 语义仍成立 */
+
+/* 用量限额卡片: 每个周期一行 = 周期名 | 限额输入 | 用量条 | 恢复时间 (窄时折成两行) */
+.quota-rows { border-top: 1.4px dashed var(--line); }
+.quota-row {
+  display: grid;
+  grid-template-columns: 76px 172px minmax(0, 1fr) minmax(150px, auto);
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 0;
+  border-bottom: 1.4px dashed var(--line);
+}
+@media (max-width: 760px) {
+  .quota-row { grid-template-columns: 76px minmax(0, 1fr); }
+}
+.quota-input { width: 120px; height: 34px; }
+.quota-input.changed { border-color: var(--accent); }
+.quota-input.invalid { border-color: var(--err); }
+.quota-track {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--surface-3);
+}
+.quota-track.warn { box-shadow: 0 0 0 1.6px var(--warn); }
+.quota-track.exceeded { box-shadow: 0 0 0 1.6px var(--err); }
+.quota-track.empty { background: transparent; border: 1.4px dashed var(--line-2); }
