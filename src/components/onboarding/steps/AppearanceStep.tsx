@@ -9,7 +9,7 @@ import type { Settings } from "@/types";
 import type { Wizard } from "../wizardStore";
 
 /** 语言名与示例句用该语言本身写, 不随界面语言翻译 (同设置页的语言下拉)。 */
-const NATIVE: Record<Locale, { name: string; sample: string; tag: string }> = {
+export const NATIVE: Record<Locale, { name: string; sample: string; tag: string }> = {
   zh: { name: "简体中文", sample: "代理运行中 · 4 个订阅可用", tag: "zh-CN" },
   "zh-Hant": { name: "繁體中文", sample: "代理執行中 · 4 個訂閱可用", tag: "zh-TW" },
   en: { name: "English", sample: "Proxy running · 4 subscriptions ready", tag: "en" },

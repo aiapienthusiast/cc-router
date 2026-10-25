@@ -20,6 +20,7 @@ import { TermsStep } from "./steps/TermsStep";
 import { SubscriptionStep } from "./steps/SubscriptionStep";
 import { ModelsStep } from "./steps/ModelsStep";
 import { ConnectStep } from "./steps/ConnectStep";
+import { DoneStep } from "./steps/DoneStep";
 import { ConnectOutcomeContext, type ClaudeOutcome } from "./connectOutcome";
 
 const TOTAL = ONBOARDING_STEPS.length;
@@ -37,7 +38,7 @@ function StepView({ step, wizard }: { step: OnboardingStep; wizard: Wizard }) {
     case "connect":
       return <ConnectStep wizard={wizard} />;
     case "done":
-      return null;
+      return <DoneStep wizard={wizard} />;
   }
 }
 

@@ -4073,3 +4073,37 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .ob-more-icon { width: 30px; height: 30px; flex: none; display: grid; place-items: center; }
 .ob-more-go { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--accent-ink); white-space: nowrap; }
 .ob-error { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+
+/* 引导 · 完成 */
+.ob-hooray {
+  margin: 0; font-family: var(--font-hand); font-size: 34px; font-weight: 700; line-height: 1;
+  color: var(--accent-ink); transform: rotate(-2deg); transform-origin: left center;
+}
+.ob-summary {
+  padding: 2px 16px;
+  background: var(--surface); border: 2px solid var(--stroke); border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+}
+.ob-summary-row { display: flex; align-items: center; gap: 12px; min-height: 38px; }
+.ob-summary-row + .ob-summary-row { border-top: 1.5px dashed var(--line); }
+.ob-summary-mark {
+  width: 20px; height: 20px; flex: none; display: grid; place-items: center; border-radius: 50%;
+  background: var(--ok-bg); color: var(--ok);
+}
+.ob-summary-mark.pending { background: var(--surface-3); color: var(--ink-3); }
+.ob-summary-label { width: 110px; flex: none; font-size: 13px; color: var(--ink-3); }
+.ob-summary-value { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ob-next-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ob-next-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 50px; padding: 6px 10px 6px 12px;
+  border: 1.5px solid transparent; border-radius: 10px;
+  background: var(--surface-2); color: var(--ink); text-align: left; cursor: pointer;
+}
+.ob-next-card:hover { border-color: var(--line-2); }
+.ob-next-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ob-next-card > svg { flex: none; color: var(--accent-ink); }
+.ob-next-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ob-next-title { font-size: 12.5px; font-weight: 600; line-height: 1.35; }
+.ob-next-where { font-size: 11px; color: var(--ink-3); }
+.star-prompt.ob-star { margin-top: 2px; }
