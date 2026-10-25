@@ -1304,5 +1304,11 @@
   "onboarding.wizard.subscription.keyLocal": "この端末にのみ保存",
   "onboarding.wizard.subscription.getKey": "{name} でキーを取得",
   "onboarding.wizard.subscription.import": "バックアップから読み込む",
-  "onboarding.wizard.backToWizard": "スタートガイドに戻る"
+  "onboarding.wizard.backToWizard": "スタートガイドに戻る",
+  "onboarding.wizard.models.fetched": "{name} から {n} 件のモデルを取得",
+  "onboarding.wizard.models.loading": "モデル一覧を取得中…",
+  "onboarding.wizard.models.emptyHint": "空欄のティアは振り分けられず、Claude Code がそれを要求したときは次のサブスクに回ります。思考強度や時間帯別モデルは、あとでサブスク詳細から調整できます。",
+  "onboarding.wizard.models.test": "接続テスト",
+  "onboarding.wizard.models.testing": "テスト中…",
+  "onboarding.wizard.models.missing": "前のステップで追加したサブスクが見つかりません。前のステップに戻って追加し直してください。"
 }

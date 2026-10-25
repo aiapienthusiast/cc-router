@@ -1304,5 +1304,11 @@
   "onboarding.wizard.subscription.keyLocal": "只保存在本机",
   "onboarding.wizard.subscription.getKey": "去 {name} 获取 Key",
   "onboarding.wizard.subscription.import": "已有配置备份？从文件导入",
-  "onboarding.wizard.backToWizard": "返回引导窗口"
+  "onboarding.wizard.backToWizard": "返回引导窗口",
+  "onboarding.wizard.models.fetched": "已从 {name} 获取 {n} 个模型",
+  "onboarding.wizard.models.loading": "正在获取模型列表…",
+  "onboarding.wizard.models.emptyHint": "留空的档位不会被调度，Claude Code 选到它时请求会交给下一个订阅。思考强度、分时段模型之后可以在订阅详情里调。",
+  "onboarding.wizard.models.test": "测试连接",
+  "onboarding.wizard.models.testing": "测试中…",
+  "onboarding.wizard.models.missing": "没找到上一步添加的订阅，请回到上一步重新添加。"
 }

@@ -18,6 +18,7 @@ import { DEFAULT_FOOTER, StepFooterContext, type StepFooter } from "./stepFooter
 import { AppearanceStep } from "./steps/AppearanceStep";
 import { TermsStep } from "./steps/TermsStep";
 import { SubscriptionStep } from "./steps/SubscriptionStep";
+import { ModelsStep } from "./steps/ModelsStep";
 
 const TOTAL = ONBOARDING_STEPS.length;
 
@@ -30,6 +31,7 @@ function StepView({ step, wizard }: { step: OnboardingStep; wizard: Wizard }) {
     case "subscription":
       return <SubscriptionStep wizard={wizard} />;
     case "models":
+      return <ModelsStep wizard={wizard} />;
     case "connect":
     case "done":
       return null;

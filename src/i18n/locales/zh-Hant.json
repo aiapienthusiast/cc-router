@@ -1304,5 +1304,11 @@
   "onboarding.wizard.subscription.keyLocal": "只儲存在本機",
   "onboarding.wizard.subscription.getKey": "前往 {name} 取得 Key",
   "onboarding.wizard.subscription.import": "已有設定備份？從檔案匯入",
-  "onboarding.wizard.backToWizard": "返回引導視窗"
+  "onboarding.wizard.backToWizard": "返回引導視窗",
+  "onboarding.wizard.models.fetched": "已從 {name} 取得 {n} 個模型",
+  "onboarding.wizard.models.loading": "正在取得模型列表…",
+  "onboarding.wizard.models.emptyHint": "留空的檔位不會被調度，Claude Code 選到它時請求會交給下一個訂閱。思考強度、分時段模型之後可以在訂閱詳情裡調整。",
+  "onboarding.wizard.models.test": "測試連線",
+  "onboarding.wizard.models.testing": "測試中…",
+  "onboarding.wizard.models.missing": "找不到上一步新增的訂閱，請回到上一步重新新增。"
 }

@@ -1304,5 +1304,11 @@
   "onboarding.wizard.subscription.keyLocal": "Stored on this device only",
   "onboarding.wizard.subscription.getKey": "Get a key from {name}",
   "onboarding.wizard.subscription.import": "Have a backup? Import from file",
-  "onboarding.wizard.backToWizard": "Back to getting started"
+  "onboarding.wizard.backToWizard": "Back to getting started",
+  "onboarding.wizard.models.fetched": "Fetched {n} models from {name}",
+  "onboarding.wizard.models.loading": "Fetching the model list…",
+  "onboarding.wizard.models.emptyHint": "Empty tiers are never dispatched; when Claude Code asks for one, the request goes to the next subscription. Effort and time-of-day models can be tuned later in subscription details.",
+  "onboarding.wizard.models.test": "Test connection",
+  "onboarding.wizard.models.testing": "Testing…",
+  "onboarding.wizard.models.missing": "The subscription from the previous step was not found. Go back and add it again."
 }
