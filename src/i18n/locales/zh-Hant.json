@@ -673,7 +673,7 @@
   "subscriptionNew.title": "新增訂閱",
   "subscriptionNew.importBackupHint": "已有 cc-router 匯出的設定檔？",
   "subscriptionNew.importBackup": "從備份匯入設定",
-  "subscriptionNew.welcomeSubtitle": "新增第一條訂閱,我們會自動把它綁定到 4 個虛擬模型,然後跳轉到接入指南。",
+  "subscriptionNew.welcomeSubtitle": "新增第一條訂閱,我們會自動把它綁定到虛擬模型,儲存後回到引導視窗繼續。",
   "subscriptionNew.subtitle": "把新廠商的 API Key 接入路由器,綁定到虛擬模型槽位。",
   "subscriptionNew.step1": "基本資訊",
   "subscriptionNew.step2": "綁定模型",
@@ -1292,5 +1292,17 @@
   "onboarding.wizard.appearance.detected": "目前系統語言：{name}",
   "settings.onboarding.label": "新手引導",
   "settings.onboarding.desc": "重新走一遍語言、訂閱和接入設定。",
-  "settings.onboarding.reopen": "重新開啟"
+  "settings.onboarding.reopen": "重新開啟",
+  "onboarding.wizard.subscription.search": "搜尋 {n} 家廠商…",
+  "onboarding.wizard.subscription.oauth": "需登入",
+  "onboarding.wizard.subscription.custom": "自訂 / 中轉站",
+  "onboarding.wizard.subscription.noMatch": "沒有符合的廠商。找不到的話可以用「自訂」。",
+  "onboarding.wizard.subscription.endpoint": "端點",
+  "onboarding.wizard.subscription.keyPlaceholder": "貼上 API Key",
+  "onboarding.wizard.subscription.showKey": "顯示 Key",
+  "onboarding.wizard.subscription.hideKey": "隱藏 Key",
+  "onboarding.wizard.subscription.keyLocal": "只儲存在本機",
+  "onboarding.wizard.subscription.getKey": "前往 {name} 取得 Key",
+  "onboarding.wizard.subscription.import": "已有設定備份？從檔案匯入",
+  "onboarding.wizard.backToWizard": "返回引導視窗"
 }

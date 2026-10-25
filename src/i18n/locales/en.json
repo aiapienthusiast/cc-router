@@ -673,7 +673,7 @@
   "subscriptionNew.title": "Add subscription",
   "subscriptionNew.importBackupHint": "Have a config file exported from cc-router?",
   "subscriptionNew.importBackup": "Import from backup",
-  "subscriptionNew.welcomeSubtitle": "Add your first subscription. We'll bind it to all 4 virtual models and jump to the setup guide.",
+  "subscriptionNew.welcomeSubtitle": "Add your first subscription. We'll bind it to the virtual models, then take you back to the getting started guide.",
   "subscriptionNew.subtitle": "Connect a vendor's API key to the router and bind it to virtual model slots.",
   "subscriptionNew.step1": "Basic info",
   "subscriptionNew.step2": "Bind models",
@@ -1292,5 +1292,17 @@
   "onboarding.wizard.appearance.detected": "System language: {name}",
   "settings.onboarding.label": "Getting started guide",
   "settings.onboarding.desc": "Walk through language, subscription and tool setup again.",
-  "settings.onboarding.reopen": "Reopen"
+  "settings.onboarding.reopen": "Reopen",
+  "onboarding.wizard.subscription.search": "Search {n} providers…",
+  "onboarding.wizard.subscription.oauth": "Sign-in",
+  "onboarding.wizard.subscription.custom": "Custom / relay",
+  "onboarding.wizard.subscription.noMatch": "No matching provider. Use Custom if yours is not listed.",
+  "onboarding.wizard.subscription.endpoint": "Endpoint",
+  "onboarding.wizard.subscription.keyPlaceholder": "Paste API key",
+  "onboarding.wizard.subscription.showKey": "Show key",
+  "onboarding.wizard.subscription.hideKey": "Hide key",
+  "onboarding.wizard.subscription.keyLocal": "Stored on this device only",
+  "onboarding.wizard.subscription.getKey": "Get a key from {name}",
+  "onboarding.wizard.subscription.import": "Have a backup? Import from file",
+  "onboarding.wizard.backToWizard": "Back to getting started"
 }

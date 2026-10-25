@@ -673,7 +673,7 @@
   "subscriptionNew.title": "添加订阅",
   "subscriptionNew.importBackupHint": "已有 cc-router 导出的配置文件？",
   "subscriptionNew.importBackup": "从备份导入配置",
-  "subscriptionNew.welcomeSubtitle": "添加第一条订阅,我们会自动把它绑定到 4 个虚拟模型,然后跳转到接入指南。",
+  "subscriptionNew.welcomeSubtitle": "添加第一条订阅,我们会自动把它绑定到虚拟模型,保存后回到引导窗口继续。",
   "subscriptionNew.subtitle": "把新厂商的 API Key 接入路由器,绑定到虚拟模型槽位。",
   "subscriptionNew.step1": "基本信息",
   "subscriptionNew.step2": "绑定模型",
@@ -1292,5 +1292,17 @@
   "onboarding.wizard.appearance.detected": "当前系统语言：{name}",
   "settings.onboarding.label": "新手引导",
   "settings.onboarding.desc": "重新走一遍语言、订阅和接入设置。",
-  "settings.onboarding.reopen": "重新打开"
+  "settings.onboarding.reopen": "重新打开",
+  "onboarding.wizard.subscription.search": "搜索 {n} 家厂商…",
+  "onboarding.wizard.subscription.oauth": "需登录",
+  "onboarding.wizard.subscription.custom": "自定义 / 中转站",
+  "onboarding.wizard.subscription.noMatch": "没有匹配的厂商。找不到的话可以用「自定义」。",
+  "onboarding.wizard.subscription.endpoint": "端点",
+  "onboarding.wizard.subscription.keyPlaceholder": "粘贴 API Key",
+  "onboarding.wizard.subscription.showKey": "显示 Key",
+  "onboarding.wizard.subscription.hideKey": "隐藏 Key",
+  "onboarding.wizard.subscription.keyLocal": "只保存在本机",
+  "onboarding.wizard.subscription.getKey": "去 {name} 获取 Key",
+  "onboarding.wizard.subscription.import": "已有配置备份？从文件导入",
+  "onboarding.wizard.backToWizard": "返回引导窗口"
 }

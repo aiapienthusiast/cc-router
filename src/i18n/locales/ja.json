@@ -673,7 +673,7 @@
   "subscriptionNew.title": "サブスクリプションを追加",
   "subscriptionNew.importBackupHint": "cc-router でエクスポートした設定ファイルをお持ちですか?",
   "subscriptionNew.importBackup": "バックアップからインポート",
-  "subscriptionNew.welcomeSubtitle": "最初のサブスクリプションを追加します。自動的に 4 つの仮想モデルすべてにバインドし、続いてセットアップガイドへ移動します。",
+  "subscriptionNew.welcomeSubtitle": "最初のサブスクリプションを追加します。自動的に仮想モデルへバインドし、保存後はスタートガイドに戻ります。",
   "subscriptionNew.subtitle": "新しいプロバイダの API Key をルーターに接続し、仮想モデルスロットにバインドします。",
   "subscriptionNew.step1": "基本情報",
   "subscriptionNew.step2": "モデルをバインド",
@@ -1292,5 +1292,17 @@
   "onboarding.wizard.appearance.detected": "システム言語：{name}",
   "settings.onboarding.label": "スタートガイド",
   "settings.onboarding.desc": "言語・サブスク・ツール接続の設定をもう一度行います。",
-  "settings.onboarding.reopen": "もう一度開く"
+  "settings.onboarding.reopen": "もう一度開く",
+  "onboarding.wizard.subscription.search": "{n} 社のプロバイダを検索…",
+  "onboarding.wizard.subscription.oauth": "要ログイン",
+  "onboarding.wizard.subscription.custom": "カスタム / 中継",
+  "onboarding.wizard.subscription.noMatch": "一致するプロバイダがありません。見つからない場合は「カスタム」を使ってください。",
+  "onboarding.wizard.subscription.endpoint": "エンドポイント",
+  "onboarding.wizard.subscription.keyPlaceholder": "API キーを貼り付け",
+  "onboarding.wizard.subscription.showKey": "キーを表示",
+  "onboarding.wizard.subscription.hideKey": "キーを隠す",
+  "onboarding.wizard.subscription.keyLocal": "この端末にのみ保存",
+  "onboarding.wizard.subscription.getKey": "{name} でキーを取得",
+  "onboarding.wizard.subscription.import": "バックアップから読み込む",
+  "onboarding.wizard.backToWizard": "スタートガイドに戻る"
 }

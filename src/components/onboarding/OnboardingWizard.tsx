@@ -17,6 +17,7 @@ import { useDisclaimerAccepted, useWizard, type Wizard } from "./wizardStore";
 import { DEFAULT_FOOTER, StepFooterContext, type StepFooter } from "./stepFooter";
 import { AppearanceStep } from "./steps/AppearanceStep";
 import { TermsStep } from "./steps/TermsStep";
+import { SubscriptionStep } from "./steps/SubscriptionStep";
 
 const TOTAL = ONBOARDING_STEPS.length;
 
@@ -27,6 +28,7 @@ function StepView({ step, wizard }: { step: OnboardingStep; wizard: Wizard }) {
     case "terms":
       return <TermsStep wizard={wizard} />;
     case "subscription":
+      return <SubscriptionStep wizard={wizard} />;
     case "models":
     case "connect":
     case "done":
