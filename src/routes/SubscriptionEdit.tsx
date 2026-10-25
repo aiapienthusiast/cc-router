@@ -32,7 +32,7 @@ import {
   useModelListMode,
 } from "@/components/ModelSlotPicker";
 import { SlotScheduleEditor } from "@/components/schedule/SlotScheduleEditor";
-import { SubscriptionBalanceCard } from "@/components/SubscriptionBalanceCard";
+import { SubscriptionBalancePanel } from "@/components/SubscriptionBalanceCard";
 import { SubscriptionQuotaCard } from "@/components/SubscriptionQuotaCard";
 import { api } from "@/api/tauri";
 import { KeyValueEditor, type KeyValueRow } from "@/components/KeyValueEditor";
@@ -330,157 +330,168 @@ export function SubscriptionEditPage() {
               <CardHeader>
                 <CardTitle>{t("subscriptionEdit.basicInfo")}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                  <Label>{t("subscriptionNew.field.provider")}</Label>
-                  {isCustom ? (
-                    <Input
-                      value={providerDisplayName}
-                      onChange={(e) => setProviderDisplayName(e.target.value)}
-                      placeholder={t("subscriptionEdit.providerNamePh")}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <ProviderIcon iconId={sub.provider_icon} size={18} />
-                      <span>{providerName(sub, locale)}{t("subscriptionEdit.providerLocked")}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 内置订阅: endpoint 切换下拉 */}
-                {!isCustom && (
-                  <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
-                    <Label className="mt-2">{t("subscriptionNew.field.endpoint")}</Label>
-                    <div className="space-y-1 min-w-0">
-                      <Select value={endpointId} onValueChange={setEndpointId}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {provider?.endpoints.filter((e) => e.protocol === sub.endpoint_protocol).map((e) => (
-                            <SelectItem key={e.id} value={e.id} subtitle={e.base_url}>
-                              {e.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="font-mono text-[10px] text-muted-foreground break-all">
-                        {sub.base_url}
-                        {sub.messages_path}
-                      </div>
-                      {endpointId !== sub.endpoint_id && (
-                        <div className="text-xs text-amber-600">
-                          {t("subscriptionEdit.endpointChangeWarn")}
+              <CardContent className="basic-info-body">
+                <div className="basic-info-row">
+                  <div className="basic-info-fields space-y-4">
+                    <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                      <Label>{t("subscriptionNew.field.provider")}</Label>
+                      {isCustom ? (
+                        <Input
+                          value={providerDisplayName}
+                          onChange={(e) => setProviderDisplayName(e.target.value)}
+                          placeholder={t("subscriptionEdit.providerNamePh")}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <ProviderIcon iconId={sub.provider_icon} size={18} />
+                          <span>{providerName(sub, locale)}{t("subscriptionEdit.providerLocked")}</span>
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
 
-                {!isCustom && provider && selectedEndpointForParams && (
-                  <UrlParamFields
-                    provider={provider}
-                    endpoint={selectedEndpointForParams}
-                    values={urlParams}
-                    onChange={(pid, v) => setUrlParams((prev) => ({ ...prev, [pid]: v }))}
-                    showErrors={showParamErrors}
-                    layout="grid"
-                  />
-                )}
+                    {/* 内置订阅: endpoint 切换下拉 */}
+                    {!isCustom && (
+                      <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
+                        <Label className="mt-2">{t("subscriptionNew.field.endpoint")}</Label>
+                        <div className="space-y-1 min-w-0">
+                          <Select value={endpointId} onValueChange={setEndpointId}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {provider?.endpoints.filter((e) => e.protocol === sub.endpoint_protocol).map((e) => (
+                                <SelectItem key={e.id} value={e.id} subtitle={e.base_url}>
+                                  {e.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="font-mono text-[10px] text-muted-foreground break-all">
+                            {sub.base_url}
+                            {sub.messages_path}
+                          </div>
+                          {endpointId !== sub.endpoint_id && (
+                            <div className="text-xs text-amber-600">
+                              {t("subscriptionEdit.endpointChangeWarn")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                {/* 自定义订阅: base_url / messages_path / auth 可编辑 */}
-                {isCustom && (
-                  <>
-                    <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                      <Label>Base URL</Label>
-                      <Input
-                        className="font-mono"
-                        value={baseUrl}
-                        onChange={(e) => setBaseUrl(e.target.value)}
-                        placeholder="https://api.example.com"
+                    {!isCustom && provider && selectedEndpointForParams && (
+                      <UrlParamFields
+                        provider={provider}
+                        endpoint={selectedEndpointForParams}
+                        values={urlParams}
+                        onChange={(pid, v) => setUrlParams((prev) => ({ ...prev, [pid]: v }))}
+                        showErrors={showParamErrors}
+                        layout="grid"
                       />
+                    )}
+
+                    {/* 自定义订阅: base_url / messages_path / auth 可编辑 */}
+                    {isCustom && (
+                      <>
+                        <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                          <Label>Base URL</Label>
+                          <Input
+                            className="font-mono"
+                            value={baseUrl}
+                            onChange={(e) => setBaseUrl(e.target.value)}
+                            placeholder="https://api.example.com"
+                          />
+                        </div>
+                        <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                          <Label>Messages Path</Label>
+                          <Input
+                            className="font-mono"
+                            value={messagesPath}
+                            onChange={(e) => setMessagesPath(e.target.value)}
+                            placeholder="/v1/messages"
+                          />
+                        </div>
+                        <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                          <Label>{t("subscriptionEdit.authHeaderName")}</Label>
+                          <Input
+                            className="font-mono"
+                            value={authHeaderName}
+                            onChange={(e) => setAuthHeaderName(e.target.value)}
+                            placeholder={t("subscriptionEdit.authHeaderNamePh")}
+                          />
+                        </div>
+                        <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                          <Label>{t("subscriptionEdit.authHeaderFormat")}</Label>
+                          <Select
+                            value={authHeaderFormat}
+                            onValueChange={(v) => setAuthHeaderFormat(v as AuthHeaderFormat)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="bearer">{t("subscriptionEdit.authBearerOption")}</SelectItem>
+                              <SelectItem value="raw">{t("subscriptionEdit.authRawOption")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
+                          <Label className="mt-2">{t("subscriptionEdit.requiredHeaders")}</Label>
+                          <div className="space-y-1">
+                            <KeyValueEditor
+                              value={requiredHeaders}
+                              onChange={setRequiredHeaders}
+                              keyPlaceholder={t("subscriptionEdit.requiredHeaderKeyPh")}
+                              valuePlaceholder={t("subscriptionEdit.requiredHeaderValuePh")}
+                              addLabel={t("subscriptionEdit.requiredHeadersAdd")}
+                              removeAriaLabel={t("subscriptionEdit.requiredHeadersRemove")}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {t("subscriptionEdit.requiredHeadersHint")}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                      <Label>{t("subscriptionNew.field.note")}</Label>
+                      <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
                     </div>
                     <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                      <Label>Messages Path</Label>
-                      <Input
-                        className="font-mono"
-                        value={messagesPath}
-                        onChange={(e) => setMessagesPath(e.target.value)}
-                        placeholder="/v1/messages"
-                      />
-                    </div>
-                    <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                      <Label>{t("subscriptionEdit.authHeaderName")}</Label>
-                      <Input
-                        className="font-mono"
-                        value={authHeaderName}
-                        onChange={(e) => setAuthHeaderName(e.target.value)}
-                        placeholder={t("subscriptionEdit.authHeaderNamePh")}
-                      />
-                    </div>
-                    <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                      <Label>{t("subscriptionEdit.authHeaderFormat")}</Label>
-                      <Select
-                        value={authHeaderFormat}
-                        onValueChange={(v) => setAuthHeaderFormat(v as AuthHeaderFormat)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bearer">{t("subscriptionEdit.authBearerOption")}</SelectItem>
-                          <SelectItem value="raw">{t("subscriptionEdit.authRawOption")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
-                      <Label className="mt-2">{t("subscriptionEdit.requiredHeaders")}</Label>
-                      <div className="space-y-1">
-                        <KeyValueEditor
-                          value={requiredHeaders}
-                          onChange={setRequiredHeaders}
-                          keyPlaceholder={t("subscriptionEdit.requiredHeaderKeyPh")}
-                          valuePlaceholder={t("subscriptionEdit.requiredHeaderValuePh")}
-                          addLabel={t("subscriptionEdit.requiredHeadersAdd")}
-                          removeAriaLabel={t("subscriptionEdit.requiredHeadersRemove")}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          {t("subscriptionEdit.requiredHeadersHint")}
-                        </p>
+                      <Label>API Key</Label>
+                      <div className="flex items-center gap-2">
+                        <Input type="password" value="••••••••••••••" disabled />
+                        <Button variant="outline" size="sm" onClick={() => setKeyDialog(true)}>
+                          {t("common.modify")}
+                        </Button>
                       </div>
                     </div>
-                  </>
-                )}
 
-                <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                  <Label>{t("subscriptionNew.field.note")}</Label>
-                  <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-                </div>
-                <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                  <Label>API Key</Label>
-                  <div className="flex items-center gap-2">
-                    <Input type="password" value="••••••••••••••" disabled />
-                    <Button variant="outline" size="sm" onClick={() => setKeyDialog(true)}>
-                      {t("common.modify")}
-                    </Button>
+                    {/* 仅 Anthropic 透传订阅: 透传客户端请求头开关 (翻译类协议不消费此字段) */}
+                    {sub.auth_type === "api_key" && !isSystemOne && (
+                      <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
+                        <Label className="mt-0.5">{t("subscriptionEdit.forwardClientHeaders")}</Label>
+                        <div className="space-y-1">
+                          <Switch
+                            checked={forwardClientHeaders}
+                            onCheckedChange={setForwardClientHeaders}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {t("subscriptionEdit.forwardClientHeadersHint")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  <SubscriptionBalancePanel
+                    subscription={sub}
+                    onChanged={() => {
+                      queryClient.invalidateQueries({ queryKey: ["subscription", id] });
+                      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+                    }}
+                  />
                 </div>
-
-                {/* 仅 Anthropic 透传订阅: 透传客户端请求头开关 (翻译类协议不消费此字段) */}
-                {sub.auth_type === "api_key" && !isSystemOne && (
-                  <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
-                    <Label className="mt-0.5">{t("subscriptionEdit.forwardClientHeaders")}</Label>
-                    <div className="space-y-1">
-                      <Switch
-                        checked={forwardClientHeaders}
-                        onCheckedChange={setForwardClientHeaders}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {t("subscriptionEdit.forwardClientHeadersHint")}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -548,14 +559,6 @@ export function SubscriptionEditPage() {
                 )}
               </CardContent>
             </Card>
-
-            <SubscriptionBalanceCard
-              subscription={sub}
-              onChanged={() => {
-                queryClient.invalidateQueries({ queryKey: ["subscription", id] });
-                queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-              }}
-            />
 
             <SubscriptionQuotaCard
               subscription={sub}

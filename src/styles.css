@@ -3809,3 +3809,21 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .quota-track.warn { box-shadow: 0 0 0 1.6px var(--warn); }
 .quota-track.exceeded { box-shadow: 0 0 0 1.6px var(--err); }
 .quota-track.empty { background: transparent; border: 1.4px dashed var(--line-2); }
+
+/* 订阅编辑页「基本信息」: 左边字段, 右边余额侧栏 (有余额查询时); 窄时余额折到字段下面 */
+.basic-info-body { container-type: inline-size; }
+.basic-info-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px 28px; }
+.basic-info-fields { flex: 999 1 480px; min-width: 0; }
+.balance-panel {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 24px;
+  border-left: 1.4px dashed var(--line);
+}
+/* 与 flex 折行的临界宽度一致: 480 + 240 + 28 */
+@container (max-width: 747px) {
+  .balance-panel { padding-left: 0; padding-top: 16px; border-left: 0; border-top: 1.4px dashed var(--line); }
+}
