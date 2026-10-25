@@ -6,6 +6,7 @@
 // 图的口径: 停用与凭证失效的订阅全周不可用; 冷却 / 限流 / 限额已满这类会自己恢复的瞬时状态
 // 只在所选时刻 = 现在 (isNow) 时生效, 一周缺口也不看它们。
 import { isAnthropicPassthrough } from "@/lib/authTypes";
+import { assignModelColors, type ModelColor } from "@/lib/modelColor";
 import { HALF_HOURS, clockAt, crossesMidnight, winningRule, type WallClock } from "@/lib/slotSchedule";
 import { jevModelOf, vmNameToSlot } from "@/lib/virtualModels";
 import type { FourSlot, SubscriptionDto, VirtualModelDto } from "@/types";
@@ -22,6 +23,8 @@ export interface RouteRow {
   label: { key: string; params?: Record<string, string> };
   /** 规则生效的星期 (ISO 1..7, 升序); null = 收尾行 / fixed 行, 视其他规则而定或不分星期 */
   days: number[] | null;
+  /** 命中这一行时会不会真的发请求 (四槽: 有模型; fixed: 没被 dispatch 跳过, 透传也算) */
+  usable: boolean;
   /** 所选时刻命中的就是这一行 (每组恰好一行) */
   active: boolean;
   /** 只有命中行有标记 */
@@ -202,6 +205,7 @@ export function buildRouteMap(
       skipped,
       rows: s.rows.map((r, i) => ({
         ...r,
+        usable: s.usable[i],
         active: i === ai,
         tag: i === ai ? tag : null,
         segments: segmentsOf(day, i),
@@ -239,4 +243,30 @@ export function buildRouteMap(
   }
 
   return { groups, summary, gapHours, firstGap };
+}
+
+/**
+ * 整页一张配色表 (同一模型在所有卡片里同色): 四槽虚拟模型的全部绑定订阅本槽位的默认与规则模型。
+ * fallback / jev 的行不分时段, 用 modelColor 兜底。
+ */
+export function pageModelColors(
+  vms: VirtualModelDto[],
+  subsMap: Map<string, SubscriptionDto>,
+): Map<string, ModelColor> {
+  const models: string[] = [];
+  for (const vm of vms) {
+    const slot = vmNameToSlot(vm.name);
+    if (slot === null) continue;
+    for (const id of vm.subscription_ids) {
+      const sub = subsMap.get(id);
+      if (!sub) continue;
+      const def = trimmed(sub.model_slots[slot]);
+      if (def) models.push(def);
+      for (const r of sub.slot_schedules?.[slot] ?? []) {
+        const m = trimmed(r.model);
+        if (m) models.push(m);
+      }
+    }
+  }
+  return assignModelColors(models);
 }

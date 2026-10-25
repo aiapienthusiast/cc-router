@@ -333,7 +333,7 @@
 }
 :where([data-art~="plain"]) .table td { border-bottom: 1px solid var(--line); }
 
-/* === Slot cards / endpoints === */
+/* === Slot cards === */
 :where([data-art~="plain"]) .slot-grid { gap: var(--gap-md); }
 :where([data-art~="plain"]) .slot-card {
   border: 1px solid var(--line);
@@ -348,47 +348,7 @@
 }
 :where([data-art~="plain"]) .slot-head.compact .slot-name { font-size: 14px; }
 :where([data-art~="plain"]) .slot-head.compact .slot-purpose { font-size: 11.5px; }
-:where([data-art~="plain"]) .endpoint {
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  transition: none;
-}
-:where([data-art~="plain"]) .endpoint:nth-child(even) { border-radius: var(--r-sm); }
-:where([data-art~="plain"]) .endpoint:hover { border-color: var(--line); }
-:where([data-art~="plain"]) .endpoint .grip { color: var(--ink-5); }
-:where([data-art~="plain"]) .endpoint .priority {
-  width: 18px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: inherit;
-  color: var(--ink-4);
-  background: var(--surface-3);
-  border-radius: 4px;
-}
 :where([data-art~="plain"]) .endpoint-status { width: 6px; height: 6px; border-radius: 50%; }
-:where([data-art~="plain"]) .endpoint .remove { border-radius: 4px; }
-:where([data-art~="plain"]) .endpoint .remove:hover { color: var(--err); background: var(--err-bg); }
-:where([data-art~="plain"]) .endpoint-list { gap: 5px; }
-:where([data-art~="plain"]) .endpoint.compact { height: 30px; }
-:where([data-art~="plain"]) .endpoint.compact .priority { width: 16px; height: 16px; font-size: 9.5px; }
-:where([data-art~="plain"]) .add-endpoint {
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r-sm);
-  transition: none;
-}
-:where([data-art~="plain"]) .add-endpoint:hover:not(:disabled) {
-  border-color: var(--ink-4);
-  background: var(--surface-2);
-  transform: none;
-}
-:where([data-art~="plain"]) .add-endpoint.compact { height: 26px; }
-:where([data-art~="plain"]) .endpoint-empty {
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-}
 
 /* === Logs / Statistics === */
 :where([data-art~="plain"]) .stat {

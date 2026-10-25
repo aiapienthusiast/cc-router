@@ -12,11 +12,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { Link } from "react-router";
 import { GripVertical, Plus, X } from "lucide-react";
 import { stateTone } from "@/components/StatusBadge";
+import { useRouteFlashState } from "@/hooks/useRouteFlash";
 import { useT, type TFunction } from "@/i18n";
 import { modelColor, type ModelColor } from "@/lib/modelColor";
 import { dayPreset, type WallClock } from "@/lib/slotSchedule";
 import { vmNameToSlot } from "@/lib/virtualModels";
-import type { SubscriptionDto, VirtualModelDto } from "@/types";
+import type { SubscriptionDto, VirtualModelDto, VirtualModelName } from "@/types";
 import { buildRouteMap, type RouteGroup, type RouteRow, type RouteTag, type SkipReason } from "./routeMap";
 
 // 画布几何 (px), 与设计稿 VirtualModelsV2 一致。TS 与 styles.css 的 .vrm-* 成对:
@@ -87,7 +88,7 @@ function rowLabel(row: RouteRow, t: TFunction): string {
 function rowModelText(row: RouteRow, t: TFunction): string {
   if (row.model !== null) return row.model;
   // fixed 行没有模型 = 透传客户端 model (翻译类未配兜底槽的除外, 它会被跳过)
-  return row.kind === "fixed" && row.label.key !== "schedule.map.fallbackSkipped"
+  return row.kind === "fixed" && row.usable
     ? t("schedule.map.passthrough")
     : t("schedule.map.notParticipating");
 }
@@ -150,7 +151,8 @@ export function VmRouteMap({ vm, subsMap, at, isNow, colors, onReorder, onRemove
     model === null ? null : (colors.get(model) ?? modelColor(model)).bar;
   const fillOf = (model: string | null): string | null =>
     model === null ? null : (colors.get(model) ?? modelColor(model)).bg;
-  const tickLeft = `calc(${(at.minute / 1440) * 100}% - 1px)`;
+  // 竖线指向所选时刻所在半小时格的中点, 不落在段的边界上
+  const tickLeft = `calc(${((Math.floor(at.minute / 30) + 0.5) / 48) * 100}% - 1px)`;
   const dayCaption = t("schedule.map.colDay", { day: t("schedule.day.one", { d: t(`schedule.wd.${at.weekday}`) }) });
 
   return (
@@ -278,13 +280,15 @@ function SubNode({
   group: RouteGroup;
   index: number;
   center: number;
-  vmName: string;
+  vmName: VirtualModelName;
   href: string;
   onRemove: () => void;
 }) {
   const { t } = useT();
   const { sub, rank, skipped } = group;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id });
+  // 实时路由事件: 请求经过这个订阅时节点闪一下 (同一订阅在不同虚拟模型下各自闪)
+  const flash = useRouteFlashState(vmName, sub.id);
   // 状态正常却不可调度 = 本地限额已满, 与 routeMap.transientStatus 同口径
   const tone = stateTone(sub.state);
   const dot =
@@ -303,7 +307,7 @@ function SubNode({
     <>
       <div
         ref={setNodeRef}
-        className={`vrm-sub ${cls}`}
+        className={`vrm-sub ${cls}${flash ? ` route-flash-${flash.kind}` : ""}`}
         style={{
           top,
           left: SUB_LEFT,

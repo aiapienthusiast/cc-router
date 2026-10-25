@@ -38,19 +38,3 @@ export function slotNowText(view: SlotNowView, t: (key: string) => string): stri
   return view.model ?? t("schedule.now.unavailable");
 }
 
-/**
- * 槽位配置摘要 (虚拟模型页绑定行):「分时段 n 条 · 默认 m」/「分时段 n 条 · 默认不设置」/「全天 · m」。
- * 默认为空且没有规则时返回 null —— 那一行已经显示「不会被调用」, 不重复。
- */
-export function slotSummaryText(
-  sub: SubscriptionDto,
-  slot: FourSlot,
-  t: (key: string, params?: Record<string, string | number>) => string,
-): string | null {
-  const n = sub.slot_schedules?.[slot]?.length ?? 0;
-  const def = (sub.model_slots[slot] ?? "").trim();
-  if (n > 0) {
-    return def ? t("schedule.summary.timed", { n, model: def }) : t("schedule.summary.timedNoDefault", { n });
-  }
-  return def ? t("schedule.summary.allDay", { model: def }) : null;
-}

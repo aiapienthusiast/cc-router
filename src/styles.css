@@ -1072,12 +1072,9 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   0%   { background: var(--err-bg); }
   100% { background: transparent; }
 }
-.chain-chip.route-flash-attempt,
-.endpoint.route-flash-attempt { animation: routeFlashAttempt 600ms ease-out; }
-.chain-chip.route-flash-success,
-.endpoint.route-flash-success { animation: routeFlashSuccess 600ms ease-out; }
-.chain-chip.route-flash-error,
-.endpoint.route-flash-error { animation: routeFlashError 600ms ease-out; }
+.chain-chip.route-flash-attempt { animation: routeFlashAttempt 600ms ease-out; }
+.chain-chip.route-flash-success { animation: routeFlashSuccess 600ms ease-out; }
+.chain-chip.route-flash-error { animation: routeFlashError 600ms ease-out; }
 
 .route-row {
   display: grid;
@@ -1120,13 +1117,11 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .chain-empty { color: var(--ink-4); font-size: 11px; font-style: italic; }
 
 /* === Slot cards === */
+/* 虚拟模型页: 每张卡片是一张定宽路由图, 单列通栏; minmax(0, …) 让窄窗口里图在卡片内横向滚动 */
 .slot-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 22px 24px;
-}
-@media (max-width: 900px) {
-  .slot-grid { grid-template-columns: 1fr; }
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
 }
 .slot-card {
   background: var(--surface);
@@ -1165,104 +1160,10 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   flex-wrap: wrap;
 }
 
-.endpoint {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1.5px solid var(--line-2);
-  border-radius: var(--r-sketch);
-  background: var(--bg);
-  margin-bottom: 8px;
-  position: relative;
-  transition: border-color 0.12s, background 0.12s;
-}
-.endpoint:nth-child(even) { border-radius: var(--r-sketch-alt); }
-.endpoint:hover { background: var(--surface); border-color: var(--ink-4); }
-.endpoint .grip {
-  color: var(--ink-4);
-  cursor: grab;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-.endpoint .grip:active { cursor: grabbing; }
-/* 优先级序号: 手写数字 */
-.endpoint .priority {
-  font-family: var(--font-hand);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--accent-ink);
-  width: 16px; height: 18px;
-  display: grid; place-items: center;
-}
-.endpoint-info { flex: 1; min-width: 0; }
-.endpoint-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
-}
-.endpoint-model {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.endpoint-model::before { content: '↳ '; color: var(--ink-4); }
 .endpoint-status { width: 8px; height: 8px; border-radius: var(--r-blob); background: var(--ok); flex-shrink: 0; }
 .endpoint-status.err { background: var(--err); }
 .endpoint-status.warn { background: var(--warn); }
 .endpoint-status.idle { background: var(--ink-4); }
-.endpoint .remove {
-  background: transparent;
-  border: none;
-  color: var(--ink-4);
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: var(--r-blob);
-}
-.endpoint .remove:hover { color: var(--ink); background: var(--fill-coral); }
-
-.add-endpoint {
-  width: 100%;
-  padding: 9px;
-  border: 1.5px dashed var(--line-2);
-  border-radius: var(--r-sketch-alt);
-  background: transparent;
-  color: var(--ink-3);
-  font-size: 12.5px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 4px;
-  transition: color 0.12s, border-color 0.12s, transform 0.15s;
-}
-.add-endpoint:hover:not(:disabled) { color: var(--ink); border-color: var(--stroke); transform: rotate(-0.4deg); }
-.add-endpoint:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.endpoint-empty {
-  border: 1.5px dashed var(--line-2);
-  border-radius: var(--r-sketch-alt);
-  padding: 18px 12px;
-  text-align: center;
-  color: var(--ink-4);
-  font-size: 12px;
-  background: transparent;
-  margin-bottom: 8px;
-}
-
 /* === Logs === */
 .log-filters {
   display: flex;
@@ -2218,10 +2119,9 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 /* 通栏内容区: 自身不留白 */
 .page-flow { flex: 1; min-height: 0; overflow-y: auto; padding: 0; }
 
-/* === 紧凑槽位卡 ===
- * 卡片外形(圆角/阴影/间距) 保持与其他页面一致, 只压缩卡内密度:
- * 调度模式并进卡头、端点行单行 30px、添加按钮 26px。 */
-/* fallback: 通栏一行, 错位投影换成陶土色, 点明「第 5 个虚拟模型」而非第 5 个槽位 */
+/* === 虚拟模型卡 ===
+ * 卡片外形(圆角/阴影/间距) 保持与其他页面一致; 调度模式并进卡头, 卡身是路由图 (VmRouteMap)。 */
+/* fallback: 错位投影换成陶土色, 点明「第 5 个虚拟模型」而非第 5 个槽位 */
 .slot-card.wide {
   grid-column: 1 / -1;
   box-shadow: 5px 5px 0 var(--accent-line);
@@ -2235,60 +2135,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .slot-head.compact .slot-purpose { font-size: 12px; margin-left: 8px; }
 .radio-group.sm { padding: 2px; flex-shrink: 0; }
 .radio-group.sm button { padding: 3px 9px; font-size: 11px; }
-
-.endpoint-list { display: flex; flex-direction: column; gap: 7px; }
-.endpoint.compact {
-  height: 36px;
-  padding: 0 8px;
-  gap: 7px;
-  margin-bottom: 0;
-}
-.endpoint.compact .priority {
-  width: 14px; height: 18px;
-  font-size: 18px;
-}
-.endpoint.compact .endpoint-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.endpoint.compact .endpoint-name {
-  font-size: 12.5px;
-  margin-bottom: 0;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.endpoint.compact .endpoint-model {
-  font-size: 11px;
-  min-width: 0;
-}
-/* 单行布局下 '↳' 是纵向承接符号, 横排里读不通 */
-.endpoint.compact .endpoint-model::before { content: none; }
-.endpoint.compact .remove {
-  padding: 2px 4px;
-  display: inline-flex;
-  align-items: center;
-  color: var(--ink-5);
-}
-.add-endpoint.compact {
-  height: 34px;
-  padding: 0;
-  font-size: 11.5px;
-  margin-top: 5px;
-}
-.endpoint-empty.compact {
-  padding: 8px 12px;
-  font-size: 11.5px;
-  margin-bottom: 0;
-}
-/* 通栏的 fallback 卡有整行宽度, 端点列表与添加按钮并排比堆叠更省高度 */
-.slot-card.wide .slot-body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  align-items: start;
-}
-.slot-card.wide .add-endpoint.compact { margin-top: 0; }
 
 /* model-jev: 第 6 个虚拟模型, 只服务 /v1/systemone。与路由图上游吊牌同一套视觉语言:
    薄荷绿挂牌 + 薄荷绿错位投影 + 极淡斜线底纹, 一眼与 5 个对话类虚拟模型区分。 */
@@ -3399,7 +3245,7 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   .rn-chev, .rn-row { transition: none; }
 }
 
-/* === 槽位分时段: 日型日程 / 此刻路由小图 / 一周色条 (spec 2026-10-24-slot-time-schedule §6.2-6.3) ===
+/* === 槽位分时段: 日型日程 (spec 2026-10-24-slot-time-schedule §6.2) ===
  * 块的底色 / 左条色由组件按模型写进 --sched-bg / --sched-bar (modelColor, 只引用 --fill-*);
  * 列高由组件经 --sched-body-h 下发, 与块内行数的换算共用一个常量。 */
 .sched-cal {
@@ -3471,85 +3317,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   pointer-events: none;
   transition: top 120ms ease-out;
 }
-
-/* 一周色条: 空档露出斜线底 */
-.sched-strip {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  border: 1.4px solid var(--ink-4);
-  border-radius: 3px;
-  overflow: hidden;
-  background: repeating-linear-gradient(135deg, var(--surface-2) 0 4px, var(--line) 4px 5px);
-}
-.sched-strip > span { flex-basis: 0; flex-shrink: 1; min-width: 0; }
-
-/* 此刻路由小图: 410 宽画布, 窄容器里横向滚动 (盒子位置由组件按候选数排) */
-.sched-rn-wrap { overflow-x: auto; }
-.sched-rn { position: relative; margin: 0 auto; }
-.sched-rn-edges { position: absolute; inset: 0; overflow: visible; }
-.sched-rn-edge path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.sched-rn-edge.first path { stroke: var(--accent); stroke-width: 3; }
-.sched-rn-edge.backup path { stroke: var(--ink-4); stroke-width: 1.6; }
-.sched-rn-edge.backup path:not(.head) { stroke-dasharray: 5 4; }
-.sched-rn-edge.on path { stroke: var(--ink-2); stroke-width: 2; }
-.sched-rn-edge.off path { stroke: var(--line); stroke-width: 1.6; }
-/* 盒子 44px 高, 单行文字靠 line-height 垂直居中 (flex 居中的文本节点做不了省略号) */
-.sched-rn-hub,
-.sched-rn-node {
-  position: absolute;
-  box-sizing: border-box;
-  padding: 0 8px;
-  line-height: 40px;
-  text-align: center;
-  font-weight: 500;
-  color: var(--ink);
-  border-radius: 12px 18px 14px 16px / 16px 12px 18px 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sched-rn-hub {
-  left: 0;
-  font-size: 12.5px;
-  background: var(--accent-bg);
-  border: 2px solid var(--stroke);
-}
-.sched-rn-node {
-  font-size: 13px;
-  background: var(--surface);
-  border: 1.6px solid var(--stroke);
-}
-.sched-rn-node.first { border: 2.2px solid var(--accent); box-shadow: 3px 3px 0 var(--accent-bg); }
-.sched-rn-node.off { border: 1.6px dashed var(--line-2); color: var(--ink-4); }
-.sched-rn-info { position: absolute; min-width: 0; }
-.sched-rn-model {
-  font-size: 12.5px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sched-rn-model.off { color: var(--ink-4); }
-.sched-rn-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  font-size: 11.5px;
-  color: var(--ink-3);
-}
-.sched-rn-swatch { width: 26px; height: 6px; border-radius: 2px; flex-shrink: 0; }
-.sched-rn-status { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); }
-.sched-rn-status::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.sched-rn-status.rate_limited { color: var(--err); }
 
 /* 虚拟模型路由图 (第二版, VmRouteMap, 设计稿 VirtualModelsV2.dc.html): 1000 宽画布, 窄容器里横向滚动。
  * 盒子位置由组件按行数排; 行的左条色 / 星期格底色由组件写进 --vrm-bar / --vrm-fill (只引用 --fill-*)。 */
@@ -3700,8 +3467,103 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   cursor: pointer;
 }
 .vrm-add:hover { color: var(--ink); border-color: var(--ink-4); }
+/* 实时路由事件: 请求经过时订阅节点闪一下。终点回到节点自己的底色 (不能是 transparent, 否则连线会透出来) */
+@keyframes vrmSubFlash {
+  0%   { background: var(--vrm-flash); }
+  100% { background: var(--surface); }
+}
+.vrm-sub.route-flash-attempt { --vrm-flash: var(--accent-bg); animation: vrmSubFlash 600ms ease-out; }
+.vrm-sub.route-flash-success { --vrm-flash: var(--ok-bg); animation: vrmSubFlash 600ms ease-out; }
+.vrm-sub.route-flash-error { --vrm-flash: var(--err-bg); animation: vrmSubFlash 600ms ease-out; }
+/* 页面底部的线条图例: 线型与 .vrm-edge 一一对应 */
+.vrm-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 16px; padding: 0 2px; font-size: 12px; color: var(--ink-3); }
+.vrm-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.vrm-legend-line { width: 26px; height: 0; border-top: 2px solid var(--ink-2); }
+.vrm-legend-line.first { border-top: 3px solid var(--accent); }
+.vrm-legend-line.backup { border-top-style: dashed; }
+.vrm-legend-line.off { border-top-style: dashed; border-top-color: var(--line-2); }
 @media (prefers-reduced-motion: reduce) {
   .vrm-edge, .vrm-sub, .vrm-row, .vrm-days, .vrm-bar { transition: none; }
+  .vrm-sub[class*="route-flash-"] { animation: none; }
+}
+
+/* 虚拟模型页「查看时刻」条 (ViewTimeBar): 吸顶, 统一驱动所有卡片的路由图。
+ * top 让出标题栏拖窗带 (--titlebar-inset), 否则 macOS 上按钮落在拖窗区里点不到。 */
+.vm-time {
+  position: sticky;
+  top: calc(var(--titlebar-inset) + 8px);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 22px;
+  padding: 12px 18px;
+  background: var(--surface);
+  border: 2px solid var(--stroke);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+}
+.vm-time-title { font-family: var(--font-display); font-size: 16px; font-weight: 500; color: var(--ink); }
+.vm-time-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1.6px solid var(--stroke);
+  border-radius: var(--r-sketch);
+  box-shadow: 2px 2px 0 var(--fill-oat);
+  cursor: pointer;
+}
+.vm-time-days { display: flex; gap: 4px; }
+.vm-time-days button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border: 1.6px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.vm-time-days button:hover:not(:disabled) { border-color: var(--line-2); }
+.vm-time-now[aria-pressed="true"],
+.vm-time-days button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+  box-shadow: none;
+  font-weight: 600;
+}
+.vm-time-now:disabled,
+.vm-time-days button:disabled { opacity: 0.55; cursor: default; }
+.vm-time-now:focus-visible,
+.vm-time-days button:focus-visible,
+.vm-time-slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vm-time-slider { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
+.vm-time-readout { min-width: 100px; text-align: right; font-size: 15px; font-weight: 500; color: var(--ink); }
+.vm-time-note { font-size: 12px; color: var(--ink-4); }
+
+/* 卡片头部: 名称 / 用途、调度模式、所选时刻的一句话摘要 (靠右) */
+.vm-card-head { justify-content: flex-start; flex-wrap: wrap; row-gap: 8px; }
+.vm-card-head .radio-group { margin-left: 6px; }
+.vm-summary { margin-left: auto; padding: 4px 12px; font-size: 13px; font-weight: 600; border-radius: 12px; }
+.vm-summary.first { background: var(--accent-bg); color: var(--accent-ink); }
+.vm-summary.pool { background: var(--ok-bg); color: var(--ok); }
+.vm-summary.none { background: var(--err-bg); color: var(--err); }
+.vm-gap {
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  color: var(--err);
+  background: var(--err-bg);
+  border: 1.4px dashed var(--err);
+  border-radius: 10px;
 }
 
 /* 订阅编辑页: 槽位分时段编辑 (SlotScheduleEditor, 设计稿 Subscription.dc.html) */
@@ -3836,136 +3698,11 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   line-height: 1.6;
   white-space: nowrap;
 }
-.endpoint-model.off { color: var(--ink-4); }
 /* 实时路由映射表: 此刻没有生效模型 (此时段不可用 / 不会被调用) 与绑定行同样压暗 */
 .vm-real.off, .lrc-vm-real.off { color: var(--ink-4); }
-/* 展开「一周时段」时的绑定行: 配置摘要 + 编辑槽位 */
-.endpoint-summary {
-  flex: 1 1 160px;
-  min-width: 0;
-  font-size: 12px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.endpoint-edit-link {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--accent-ink);
-  text-decoration: none;
-  border-bottom: 1.4px solid var(--accent-line);
-  line-height: 1.3;
-}
-.endpoint-edit-link:hover { color: var(--accent); }
-.endpoint-edit-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* 绑定行尾: 该订阅本槽位一周可用小条 */
-.endpoint-week { flex: 0 0 72px; min-width: 0; }
-.slot-card.wide .endpoint-week { flex-basis: 140px; }
-
-/* 虚拟模型卡片: 一周色条 + 展开「一周时段」(只有四个槽位) */
-.vm-week-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: -2px 0 10px;
-}
-.vm-week-row-label { font-size: 11.5px; color: var(--ink-3); flex-shrink: 0; }
-.vm-week-row .sched-strip { flex: 1 1 auto; border-color: var(--stroke); }
-.vm-week-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  padding: 3px 9px;
-  border: 1.4px solid var(--line-2);
-  border-radius: var(--r-sketch);
-  background: var(--surface);
-  color: var(--ink-2);
-  font-size: 11.5px;
-  cursor: pointer;
-}
-.vm-week-toggle:hover { border-color: var(--ink-4); color: var(--ink); }
-.vm-week-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.vm-week-toggle svg { transition: transform 150ms ease-out; }
-.vm-week-toggle.on svg { transform: rotate(180deg); }
-/* 展开后卡片通栏 (同 fallback 的 wide), 但保留普通投影: 它仍是四个槽位之一 */
-.slot-card.week-open { box-shadow: var(--shadow-card); }
-/* 不沿用 fallback 通栏的两列 slot-body: 绑定列表要整行宽, 才放得下摘要与一周小条 */
-.slot-card.week-open .slot-body { display: block; }
-.slot-card.week-open .add-endpoint.compact { margin-top: 5px; }
-
-.vm-week {
-  margin-top: 8px;
-  padding-top: 14px;
-  border-top: 1.4px dashed var(--line-2);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.vm-week-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
-.vm-week-head h3 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 17px;
-  color: var(--ink);
-}
-.vm-week-desc { font-size: 12px; color: var(--ink-3); }
-.vm-week-cover { margin-left: auto; }
-.vm-week-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  gap: 22px;
-  align-items: start;
-}
-.vm-week-scrub {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1.4px dashed var(--line-2);
-}
-.vm-week-scrub input[type="range"] { flex: 1 1 240px; min-width: 0; accent-color: var(--accent); }
-.vm-week-now {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 6px 14px;
-  border: 1.6px solid var(--stroke);
-  border-radius: var(--r-sketch);
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 13px;
-  box-shadow: 2px 2px 0 var(--fill-oat);
-  cursor: pointer;
-}
-.vm-week-now[aria-pressed="true"] { background: var(--surface-2); box-shadow: none; }
-.vm-week-now:disabled { opacity: 0.55; cursor: default; }
-.vm-week-now:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.vm-week-time { min-width: 96px; text-align: right; font-size: 14px; font-weight: 500; color: var(--ink); }
-.vm-week-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; }
-.vm-week-chain-label { color: var(--ink-3); }
-.vm-week-chain-item { color: var(--ink-2); }
-.vm-week-chain-item.first { color: var(--ink); font-weight: 600; }
-.vm-week-chain-sep { color: var(--ink-4); }
-.vm-week-chain-empty { color: var(--err); font-weight: 600; }
-.vm-week-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.vm-week-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.vm-week-swatch {
-  width: 12px;
-  height: 12px;
-  box-sizing: border-box;
-  border-radius: 3px;
-  border-left: 4px solid;
-  flex-shrink: 0;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .sched-cursor { transition: none; }
-  .vm-week-toggle svg { transition: none; }
 }
 
 /* === Tailwind base override 兼容: 让原 ui/* shadcn 组件颜色仍可读 === */
