@@ -307,16 +307,25 @@ check("列表外: 没有模型列表时不提示", !outsideModelList("x", []));
     same(jv.groups.map((g) => [g.rows[0].kind, g.rows[0].model, g.rows[0].days]), [["fixed", "clef-pro", null], ["fixed", "ex-model", null], ["fixed", null, null]]));
   check("路由图: jev 行都 usable (透传也会发请求)", jv.groups.every((g) => g.rows[0].usable));
 
-  // 整页一张配色表: 四槽虚拟模型的全部绑定订阅的默认与规则模型; fallback / jev 与缺失订阅不计
+  // 整页一张配色表: 全部虚拟模型 (含 fallback 兜底槽与 jev 模型) 各行的模型; 缺失订阅不计
+  const pageSubs = new Map([...rmap,
+    ["Aiberm", SUB("Aiberm", { opus: "gpt-6.1-sol", sonnet: "gpt-6.1-sol", fallback: "fb-only" })],
+    ["j1", SUB("j1", { jev: "jev-only" }, {}, { model_discovery: { example_models: [] } })]]);
   const pageColors = pageModelColors(
-    [VM(["qoder", "ghost"]), VM(["DeepSeek", "Aiberm"], "round_robin", "model-sonnet"), VM(["Aiberm"], "sequential", "model-fallback")],
-    new Map([...rmap, ["Aiberm", SUB("Aiberm", { opus: "gpt-6.1-sol", sonnet: "gpt-6.1-sol", fallback: "fb-only" })]]),
+    [VM(["qoder", "ghost"]), VM(["DeepSeek", "Aiberm"], "round_robin", "model-sonnet"),
+      VM(["Aiberm"], "sequential", "model-fallback"), VM(["j1"], "sequential", "model-jev")],
+    pageSubs,
   );
-  check("路由图: 整页配色覆盖各卡片的默认与规则模型",
-    same([...pageColors.keys()].sort(), ["deepseek-4.1", "gpt-6.1-sol", "qwen-max"]), JSON.stringify([...pageColors.keys()]));
+  const pageModels = ["deepseek-4.1", "fb-only", "gpt-6.1-sol", "jev-only", "qwen-max"];
+  check("路由图: 整页配色覆盖所有卡片 (含 fallback / jev) 的模型",
+    same([...pageColors.keys()].sort(), pageModels), JSON.stringify([...pageColors.keys()]));
   check("路由图: 整页配色互不相同", new Set([...pageColors.values()].map((c) => c.bg)).size === pageColors.size);
-  check("路由图: 整页配色与 assignModelColors 同一张表",
-    same([...pageColors], [...assignModelColors(["deepseek-4.1", "gpt-6.1-sol", "qwen-max"])]));
+  {
+    const four = ["deepseek-4.1", "gpt-6.1-sol", "qwen-max"].map((m) => pageColors.get(m)?.bar);
+    check("路由图: fallback / jev 专属模型与四槽模型不撞色",
+      ["fb-only", "jev-only"].every((m) => pageColors.get(m) && !four.includes(pageColors.get(m).bar)));
+  }
+  check("路由图: 整页配色与 assignModelColors 同一张表", same([...pageColors], [...assignModelColors(pageModels)]));
 }
 
 // ---- 3. 源码扫描: 不得用 new Date( 推算星期 / 时刻 ----

@@ -70,6 +70,13 @@ export function effectiveModel(
   return i !== null ? pick(rules[i].model) : pick(def);
 }
 
+/** 当天分钟数 → `HH:MM` (1440 → `24:00`)。 */
+export function hhmm(minute: number): string {
+  const h = Math.floor(minute / 60);
+  const m = minute % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** 半小时下标 (0 = 周一 00:00) → 墙钟。 */
 export function clockAt(index: number): WallClock {
   return {

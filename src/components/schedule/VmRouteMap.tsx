@@ -1,4 +1,4 @@
-import { Fragment, useMemo, type CSSProperties } from "react";
+import { Fragment, type CSSProperties } from "react";
 import {
   DndContext,
   closestCenter,
@@ -17,8 +17,8 @@ import { useT, type TFunction } from "@/i18n";
 import { modelColor, type ModelColor } from "@/lib/modelColor";
 import { dayPreset, type WallClock } from "@/lib/slotSchedule";
 import { vmNameToSlot } from "@/lib/virtualModels";
-import type { SubscriptionDto, VirtualModelDto, VirtualModelName } from "@/types";
-import { buildRouteMap, type RouteGroup, type RouteRow, type RouteTag, type SkipReason } from "./routeMap";
+import type { VirtualModelDto, VirtualModelName } from "@/types";
+import type { RouteGroup, RouteMapData, RouteRow, RouteTag, SkipReason } from "./routeMap";
 
 // 画布几何 (px), 与设计稿 VirtualModelsV2 一致。TS 与 styles.css 的 .vrm-* 成对:
 // 盒子位置 / 尺寸在这里, 描边 / 字号 / 颜色在 CSS。
@@ -62,11 +62,10 @@ const SKIP_NOTE_KEY: Record<SkipReason, string> = {
 
 interface Props {
   vm: VirtualModelDto;
-  subsMap: Map<string, SubscriptionDto>;
-  /** 所选时刻 (宿主机墙钟) */
+  /** 调用方用 buildRouteMap(vm, subsMap, at, isNow) 算好的图数据 (卡片头部摘要也用它, 只算一次) */
+  data: RouteMapData;
+  /** 所选时刻 (宿主机墙钟), 与 data 同一时刻: 画星期高亮与时间条竖线 */
   at: WallClock;
-  /** 所选时刻就是宿主机此刻: 只有这时才叠加冷却 / 限流 / 限额已满 */
-  isNow: boolean;
   /** 整页一张配色表 (assignModelColors), 同一模型在所有卡片里同色 */
   colors: Map<string, ModelColor>;
   onReorder(ids: string[]): void;
@@ -117,11 +116,10 @@ function curve(x1: number, y1: number, x2: number, y2: number): string {
  * 四槽虚拟模型另有星期七格与所选那天的 0–24 时间条。线条与标记随所选时刻变化。
  * 宽度固定, 外层横向滚动 (拓扑图挤压会让连线与行错位)。
  */
-export function VmRouteMap({ vm, subsMap, at, isNow, colors, onReorder, onRemove, onAdd }: Props) {
+export function VmRouteMap({ vm, data, at, colors, onReorder, onRemove, onAdd }: Props) {
   const { t } = useT();
   const slot = vmNameToSlot(vm.name);
   const timed = slot !== null;
-  const data = useMemo(() => buildRouteMap(vm, subsMap, at, isNow), [vm, subsMap, at, isNow]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   // 纵向排布: 每组高 = 行数 × ROW_H, 组间 GAP, 列底是「添加订阅」

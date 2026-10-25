@@ -1,8 +1,7 @@
 import { useId } from "react";
 import { Clock } from "lucide-react";
 import { useT } from "@/i18n";
-import type { WallClock } from "@/lib/slotSchedule";
-import { hhmm } from "./DayTypeCalendar";
+import { hhmm, type WallClock } from "@/lib/slotSchedule";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
 

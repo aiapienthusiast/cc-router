@@ -2146,7 +2146,8 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
     repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--fill-cactus) 18%, transparent) 14px 15px),
     var(--surface);
 }
-.slot-card.jev .slot-head.compact { padding-right: 196px; }
+/* 卡头整行下移让出挂牌: 右侧的摘要胶囊在挂牌下方, 宽窗口也不必为挂牌缩窄卡头 */
+.slot-card.jev .slot-head.compact { padding-top: 24px; }
 .jev-hangtag {
   position: absolute;
   top: -22px;
@@ -2219,10 +2220,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   border-radius: var(--r-sketch);
   padding: 1px 8px;
   background: transparent;
-}
-@media (max-width: 900px) {
-  /* 窄屏: 模式切换换到标题下方, 吊牌位置不变 */
-  .slot-card.jev .slot-head.compact { flex-wrap: wrap; padding-right: 0; padding-top: 24px; }
 }
 
 /* ============================================================
@@ -3274,7 +3271,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sched-cal-head.cur { font-weight: 600; color: var(--ink); }
 .sched-cal-body {
   position: relative;
   height: var(--sched-body-h);
@@ -3285,8 +3281,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .sched-cal-body.hatched {
   background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--line) 6px 7px);
 }
-.sched-cal-body.pickable { cursor: crosshair; }
-.sched-cal-body:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sched-block {
   position: absolute;
   left: 3px;
@@ -3309,14 +3303,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 .sched-block-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sched-block-sub { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sched-block.empty .sched-block-sub { color: var(--err); }
-.sched-cursor {
-  position: absolute;
-  left: -4px;
-  right: -4px;
-  border-top: 2.4px solid var(--ink);
-  pointer-events: none;
-  transition: top 120ms ease-out;
-}
 
 /* 虚拟模型路由图 (第二版, VmRouteMap, 设计稿 VirtualModelsV2.dc.html): 1000 宽画布, 窄容器里横向滚动。
  * 盒子位置由组件按行数排; 行的左条色 / 星期格底色由组件写进 --vrm-bar / --vrm-fill (只引用 --fill-*)。 */
@@ -3700,10 +3686,6 @@ html:not([data-platform="macos"]) .main.flush { padding-top: 0; }
 }
 /* 实时路由映射表: 此刻没有生效模型 (此时段不可用 / 不会被调用) 与绑定行同样压暗 */
 .vm-real.off, .lrc-vm-real.off { color: var(--ink-4); }
-
-@media (prefers-reduced-motion: reduce) {
-  .sched-cursor { transition: none; }
-}
 
 /* === Tailwind base override 兼容: 让原 ui/* shadcn 组件颜色仍可读 === */
 }

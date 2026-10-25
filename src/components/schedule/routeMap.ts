@@ -246,26 +246,18 @@ export function buildRouteMap(
 }
 
 /**
- * 整页一张配色表 (同一模型在所有卡片里同色): 四槽虚拟模型的全部绑定订阅本槽位的默认与规则模型。
- * fallback / jev 的行不分时段, 用 modelColor 兜底。
+ * 整页一张配色表 (同一模型在所有卡片里同色、不同模型不撞色): 全部虚拟模型 (含 fallback 兜底槽与
+ * jev 模型) 路由图各行的模型。行的集合与时刻无关, 所以随便取一个时刻建图即可。
  */
 export function pageModelColors(
   vms: VirtualModelDto[],
   subsMap: Map<string, SubscriptionDto>,
 ): Map<string, ModelColor> {
+  const anyAt: WallClock = { weekday: 1, minute: 0 };
   const models: string[] = [];
   for (const vm of vms) {
-    const slot = vmNameToSlot(vm.name);
-    if (slot === null) continue;
-    for (const id of vm.subscription_ids) {
-      const sub = subsMap.get(id);
-      if (!sub) continue;
-      const def = trimmed(sub.model_slots[slot]);
-      if (def) models.push(def);
-      for (const r of sub.slot_schedules?.[slot] ?? []) {
-        const m = trimmed(r.model);
-        if (m) models.push(m);
-      }
+    for (const g of buildRouteMap(vm, subsMap, anyAt, false).groups) {
+      for (const r of g.rows) if (r.model !== null) models.push(r.model);
     }
   }
   return assignModelColors(models);

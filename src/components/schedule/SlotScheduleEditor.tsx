@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelSelect } from "@/components/ModelSlotPicker";
-import { DayTypeCalendar, hhmm, type Cell } from "./DayTypeCalendar";
+import { DayTypeCalendar, type Cell } from "./DayTypeCalendar";
 import { assignModelColors, modelColor } from "@/lib/modelColor";
 import { MODEL_SLOT_KEYS } from "@/lib/modelSlots";
 import {
@@ -18,6 +18,7 @@ import {
   crossesMidnight,
   dayPreset,
   effectiveModel,
+  hhmm,
   outsideModelList,
   ruleIssues,
   validateRules,

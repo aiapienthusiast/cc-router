@@ -10,7 +10,6 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { StarPrompt } from "@/components/StarPrompt";
-import { hhmm } from "@/components/schedule/DayTypeCalendar";
 import { ViewTimeBar } from "@/components/schedule/ViewTimeBar";
 import { VmRouteMap } from "@/components/schedule/VmRouteMap";
 import { buildRouteMap, pageModelColors, type RouteMapData } from "@/components/schedule/routeMap";
@@ -20,7 +19,7 @@ import { useProxyStatus } from "@/hooks/useSettings";
 import { useVirtualModels, useUpdateVirtualModel } from "@/hooks/useVirtualModels";
 import { isAnthropicPassthrough } from "@/lib/authTypes";
 import type { ModelColor } from "@/lib/modelColor";
-import type { WallClock } from "@/lib/slotSchedule";
+import { hhmm, type WallClock } from "@/lib/slotSchedule";
 import { slotNow, slotNowText } from "@/lib/slotNow";
 import { customProviderLabel } from "@/lib/providerLabels";
 import { providerName as localProviderName } from "@/lib/providerText";
@@ -170,7 +169,7 @@ function VirtualModelCard({
   // fallback 是第 5 个虚拟模型, 语义上与 4 个槽位并列而非同级, 投影换色区分
   const isFallback = vm.name === "model-fallback";
   const jev = isJev(vm.name);
-  // 头部摘要与缺口提示; 图内部按同样的参数再算一次 (纯计算, 量很小)
+  // 图数据只算一次: 头部摘要 / 缺口提示与路由图共用
   const data = useMemo(() => (at ? buildRouteMap(vm, subsMap, at, isNow) : null), [vm, subsMap, at, isNow]);
   const cardClass = jev ? "slot-card wide jev" : isFallback ? "slot-card wide" : "slot-card";
   const summaryTone = !data ? "" : data.summary.kind === "none" ? "none" : data.summary.kind === "first" ? "first" : "pool";
@@ -215,12 +214,11 @@ function VirtualModelCard({
         </div>
       )}
 
-      {at ? (
+      {at && data ? (
         <VmRouteMap
           vm={vm}
-          subsMap={subsMap}
+          data={data}
           at={at}
-          isNow={isNow}
           colors={colors}
           onReorder={onReorder}
           onRemove={onRemove}

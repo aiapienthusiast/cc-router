@@ -1,6 +1,6 @@
-import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
+import type { CSSProperties } from "react";
 import { useT, type TFunction } from "@/i18n";
-import { groupDayTypes, runs, type WallClock } from "@/lib/slotSchedule";
+import { groupDayTypes, hhmm, runs } from "@/lib/slotSchedule";
 
 /** 日程里的一个半小时格。key 相同的相邻格合并成一块; color 为 null 表示空档。 */
 export type Cell = {
@@ -20,13 +20,6 @@ const MIN_TWO_LINES = 30;
 const MIN_ONE_LINE = 15;
 const AXIS_HOURS = [0, 6, 12, 18, 24];
 
-/** 当天分钟数 → `HH:MM` (1440 → `24:00`)。 */
-export function hhmm(minute: number): string {
-  const h = Math.floor(minute / 60);
-  const m = minute % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
 /** 日型列名: 7 天 →「每天」, 1 天 →「周一」, 连续 →「周二至五」, 否则「周一、周三」。days 升序。 */
 export function dayGroupLabel(days: number[], t: TFunction): string {
   const wd = (d: number) => t(`schedule.wd.${d}`);
@@ -42,17 +35,12 @@ export function dayGroupLabel(days: number[], t: TFunction): string {
 /**
  * 按日型合并的一周日程: 48 格完全相同的日子并成一列, 列内连续同 key 的格并成一块。
  * 空档按 emptyLabel 画: `unavailable` = 斜线底 (不画块), `no_candidate` = 红色虚线块「无可用」。
- * 给了 onPick 时列可点击 / 聚焦, ↑/↓ 以 30 分钟移动 cursor。
  */
 export function DayTypeCalendar({
   cells,
-  cursor,
-  onPick,
   emptyLabel,
 }: {
   cells: Cell[];
-  cursor?: WallClock | null;
-  onPick?: (at: WallClock) => void;
   emptyLabel: "unavailable" | "no_candidate";
 }) {
   const { t } = useT();
@@ -75,8 +63,6 @@ export function DayTypeCalendar({
           key={g.days.join(",")}
           days={g.days}
           cells={g.cells}
-          cursor={cursor && g.days.includes(cursor.weekday) ? cursor : null}
-          onPick={onPick}
           emptyLabel={emptyLabel}
           t={t}
         />
@@ -88,70 +74,24 @@ export function DayTypeCalendar({
 function DayColumn({
   days,
   cells,
-  cursor,
-  onPick,
   emptyLabel,
   t,
 }: {
   days: number[];
   cells: Cell[];
-  /** 只有 cursor 落在本组时才非空 */
-  cursor: WallClock | null;
-  onPick?: (at: WallClock) => void;
   emptyLabel: "unavailable" | "no_candidate";
   t: TFunction;
 }) {
   const name = dayGroupLabel(days, t);
-  const weekday = cursor ? cursor.weekday : days[0];
-
-  const pickAt = (e: MouseEvent<HTMLDivElement>) => {
-    if (!onPick) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const slot = Math.floor(((e.clientY - r.top) / r.height) * SLOTS);
-    onPick({ weekday, minute: Math.max(0, Math.min(SLOTS - 1, slot)) * 30 });
-  };
-
-  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (!onPick || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
-    e.preventDefault();
-    // cursor 不在本组时先跳进来: ↓ 从 00:00 开始, ↑ 从 23:30 开始
-    const cur = cursor ? Math.floor(cursor.minute / 30) * 30 : null;
-    const step = e.key === "ArrowUp" ? -30 : 30;
-    const next = cur === null ? (step > 0 ? 0 : 1410) : Math.max(0, Math.min(1410, cur + step));
-    onPick({ weekday, minute: next });
-  };
-
-  const interactive = onPick !== undefined;
-  const cursorSlot = cursor ? Math.floor(cursor.minute / 30) : null;
-
   return (
     <div className="sched-cal-col">
-      <div className={cursor ? "sched-cal-head cur" : "sched-cal-head"} title={name}>
+      <div className="sched-cal-head" title={name}>
         {name}
       </div>
-      <div
-        className={`sched-cal-body${emptyLabel === "unavailable" ? " hatched" : ""}${interactive ? " pickable" : ""}`}
-        onClick={interactive ? pickAt : undefined}
-        onKeyDown={interactive ? onKey : undefined}
-        tabIndex={interactive ? 0 : undefined}
-        role={interactive ? "slider" : undefined}
-        aria-orientation={interactive ? "vertical" : undefined}
-        aria-label={interactive ? name : undefined}
-        aria-valuemin={interactive ? 0 : undefined}
-        aria-valuemax={interactive ? 1410 : undefined}
-        aria-valuenow={interactive && cursor ? cursorSlot! * 30 : undefined}
-        aria-valuetext={
-          interactive && cursor
-            ? `${t("schedule.day.one", { d: t(`schedule.wd.${cursor.weekday}`) })} ${hhmm(cursorSlot! * 30)}`
-            : undefined
-        }
-      >
+      <div className={emptyLabel === "unavailable" ? "sched-cal-body hatched" : "sched-cal-body"}>
         {runs(cells, (c) => c.key).map((run) => (
           <Block key={run.start} start={run.start} end={run.end} cell={run.value} emptyLabel={emptyLabel} t={t} />
         ))}
-        {cursorSlot !== null && (
-          <div className="sched-cursor" style={{ top: `${((cursorSlot + 0.5) / SLOTS) * 100}%` }} aria-hidden />
-        )}
       </div>
     </div>
   );
