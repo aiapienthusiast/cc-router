@@ -424,10 +424,6 @@
   border-radius: 14px;
   box-shadow: var(--shadow-sm);
 }
-:where([data-art~="plain"]) .onboarding-disclaimer-mark {
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
-}
 :where([data-art~="plain"]) .alert {
   border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
@@ -524,6 +520,30 @@
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
 }
+
+/* === 引导窗口 === */
+:where([data-art~="plain"]) .ob { border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); }
+:where([data-art~="plain"]) .ob-kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:where([data-art~="plain"]) .ob-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+:where([data-art~="plain"]) .ob-title::after { display: none; }
+:where([data-art~="plain"]) .ob-step-dot { font-family: var(--font-sans); font-size: 12px; }
+:where([data-art~="plain"]) .ob-counter { font-family: var(--font-mono); font-size: 12px; }
+:where([data-art~="plain"]) .ob-tip,
+:where([data-art~="plain"]) .ob-option,
+:where([data-art~="plain"]) .ob-agree,
+:where([data-art~="plain"]) .ob-resume,
+:where([data-art~="plain"]) .ob-chip { border-radius: var(--r-md); }
+:where([data-art~="plain"]) .ob-tip { border-style: solid; border-color: var(--line); }
+:where([data-art~="plain"]) .ob-option.selected,
+:where([data-art~="plain"]) .ob-seg-item.selected,
+:where([data-art~="plain"]) .ob-chip.on,
+:where([data-art~="plain"]) .ob-resume { border-width: 1.5px; box-shadow: none; }
 
 /* === 更新内容弹窗 === */
 :where([data-art~="plain"]) .rn {

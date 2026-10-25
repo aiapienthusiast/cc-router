@@ -11,6 +11,7 @@ import { useTheme, type ColorMode } from "@/hooks/useTheme";
 import { THEMES } from "@/themes";
 import type { UpdateSource } from "@/types";
 import type { SettingsForm } from "./useSettingsForm";
+import { useWizard } from "@/components/onboarding/wizardStore";
 
 const COLOR_MODES: readonly ColorMode[] = ["system", "light", "dark"];
 
@@ -18,6 +19,7 @@ const COLOR_MODES: readonly ColorMode[] = ["system", "light", "dark"];
 export function GeneralTab({ form }: { form: SettingsForm }) {
   const { t } = useT();
   const { mode, setMode, themeId, setThemeId } = useTheme();
+  const wizard = useWizard();
 
   return (
     <>
@@ -46,6 +48,22 @@ export function GeneralTab({ form }: { form: SettingsForm }) {
                 <SelectItem value="ja">日本語</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="setting-row">
+            <div className="label-col">
+              {t("settings.onboarding.label")}
+              <div className="desc">{t("settings.onboarding.desc")}</div>
+            </div>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => {
+                wizard.reset();
+                wizard.reopen();
+              }}
+            >
+              {t("settings.onboarding.reopen")}
+            </button>
           </div>
           <div className="setting-row">
             <div className="label-col">{t("settings.proxy.autostart.label")}</div>

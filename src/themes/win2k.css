@@ -598,6 +598,20 @@ html:not([data-platform="macos"]):where([data-art~="win2k"]) .window-title {
   box-shadow: var(--bevel-raised);
 }
 :where([data-art~="win2k"]) .dialog-close > svg { width: 10px; height: 10px; stroke-width: 3; }
+:where([data-art~="win2k"]) .ob { border: none; border-radius: 0; background: var(--w-face); box-shadow: var(--bevel-window), 2px 2px 0 rgba(0,0,0,0.35); }
+:where([data-art~="win2k"]) .ob-side { background: var(--w-win); border-right: 1px solid var(--w-sh); }
+:where([data-art~="win2k"]) .ob-head,
+:where([data-art~="win2k"]) .ob-foot { border-color: var(--w-sh); }
+:where([data-art~="win2k"]) .ob-title::after { display: none; }
+:where([data-art~="win2k"]) .ob-option,
+:where([data-art~="win2k"]) .ob-agree,
+:where([data-art~="win2k"]) .ob-tip,
+:where([data-art~="win2k"]) .ob-chip,
+:where([data-art~="win2k"]) .ob-resume { border-radius: 0; }
+:where([data-art~="win2k"]) .ob-option.selected,
+:where([data-art~="win2k"]) .ob-chip.on,
+:where([data-art~="win2k"]) .ob-seg-item.selected,
+:where([data-art~="win2k"]) .ob-resume { box-shadow: none; }
 :where([data-art~="win2k"]) .rn-tabs { border-bottom: 1px solid var(--w-sh); }
 :where([data-art~="win2k"]) .rn-x { width: 16px; height: 14px; background: var(--w-face); box-shadow: var(--bevel-raised); color: var(--w-text); }
 :where([data-art~="win2k"]) .rn-row,
